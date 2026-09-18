@@ -1,0 +1,13 @@
+jsonl : C:\Users\Administrator\Desktop\批量跑图\测试\二次元平涂_Prompt_with_images.jsonl
+
+行数 : 183 | 图片 : 61 | runs : 3
+标签 : 1
+prompt_target 分布 : {'像素': 183}
+
+路径前缀 :
+    /mnt/kfs/alice/风格/20260904-非写实风格化-4148-qt-2072-s35-2076/4分-2072张  (183 行)
+
+全部 61 张图都能在本地找到，路径层级正确。
+
+
+校验通过。
