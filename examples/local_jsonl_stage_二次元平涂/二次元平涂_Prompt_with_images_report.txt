@@ -1,0 +1,13 @@
+总表标签数 : 1 | runs : 3
+因 prompt 为空被丢弃的目标 : 无
+
+--- 每个标签的分配 ---
+  二次元平涂           61张 -> 像素 61
+
+图片 : 61 | 行数 : 183
+
+prompt_target 分布 :
+    像素              61 张 (183 行)
+
+已写出 : C:\Users\Administrator\Desktop\批量跑图\测试\二次元平涂_Prompt_with_images.jsonl
+下一步务必跑 verify_jsonl.py，尤其是 --kml-prefix 的层级。
