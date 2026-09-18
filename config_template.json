@@ -1,0 +1,33 @@
+{
+  "_说明": [
+    "新批次：复制本文件为 batches/<批次id>/config.json，把所有 <...> 占位替换掉；字段与 style0911 的 config.json 一一对应。",
+    "目录约定：原素材 -> /mnt/kfs/alice/source/<任务类型>/<批次目录>/（只读，不往里写任何生成物）",
+    "          生成物 -> /mnt/kfs/alice/work/<批次id>/（出图目录、pipeline CSV/JSONL、原素材软链、*_align_out 都在这；删一批 = 删这一个目录）",
+    "          日志   -> /mnt/kfs/alice/pipeline/logs/<批次id>/",
+    "          代码   -> /mnt/kfs/alice/pipeline/（脚本按自身位置找 batches/index.json、prompts.json、skills/，这四样必须一起放）",
+    "批次id 建议带任务和内容：style_20260915_二次元平涂转像素、light_20260915_百叶窗光；<批次目录> 沿用文档命名 YYYYMMDD-<名称>-<张数>-...",
+    "batches/index.json 里要有同名条目，值就是整个 config.json 的内容（build_jsonl_lighting.py 会按 config 更新，手工加也可以）。"
+  ],
+  "_流程": [
+    "cd /mnt/kfs/alice/pipeline && mkdir -p logs/<批次id>",
+    "出图:   nohup python3 -u gen_image_lighting.py --batch <批次id> > logs/<批次id>/gen.log 2>&1 &",
+    "交付表: python3 -u make_lighting_delivery_csv.py --batch <批次id> [--no-colormatch-tags all] --verify > logs/<批次id>/deliver.log 2>&1",
+    "对齐:   nohup /root/miniconda3/envs/comfyui-v4.0/bin/python -u skills/lighting-destyle-align/align_batch.py --csv batches/<批次id>/<交付表>.csv --root /mnt/kfs/alice/work/<批次id> --out /mnt/kfs/alice/work/<批次id>/<交付表名>_align_out --style <风格名> --workers 4 > logs/<批次id>/align.log 2>&1 &",
+    "注意：对齐用的 conda 环境在开发机本地盘，不在 KFS；开发机重建后要重装 skills/lighting-destyle-align/requirements-batch.txt。"
+  ],
+  "id": "<批次id>",
+  "excel_distribution": "<prompt 总表文件名：风格种类-提示词总表.xlsx 或 光照种类-提示词总表.xlsx>",
+  "root_name": "<素材总目录名，仅报告展示用>",
+  "total_images": 0,
+  "leaf_categories": 1,
+  "image_root": "/mnt/kfs/alice/source/<任务类型>/<批次目录>",
+  "kml_image_root": "/mnt/kfs/alice/source/<任务类型>/<批次目录>",
+  "local_image_root": "source_images/<批次id>",
+  "delivery_root": "<批次目录>",
+  "source_dir": "<批次目录>",
+  "output_rel_prefix": "<批次目录>-qt-round1",
+  "work_dir": "/mnt/kfs/alice/work/<批次id>",
+  "jsonl": "batches/<批次id>/Prompt_with_images.jsonl",
+  "pipeline_csv": "Prompt_with_images_<批次id>.csv",
+  "delivery_csv": "batches/<批次id>/<批次id>_<任务类型>_final.csv"
+}
