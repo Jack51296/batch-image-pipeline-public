@@ -1,0 +1,23 @@
+{
+  "SOURCE": {
+    "w": 5760,
+    "h": 3240,
+    "bytes": 24695282,
+    "lap_var": 425.8,
+    "uniq_colors_sampled": 845485
+  },
+  "LOW": {
+    "w": 1672,
+    "h": 941,
+    "bytes": 2578973,
+    "lap_var": 1896.4,
+    "uniq_colors_sampled": 634269
+  },
+  "HIGH": {
+    "w": 1672,
+    "h": 941,
+    "bytes": 2246599,
+    "lap_var": 1027.7,
+    "uniq_colors_sampled": 643673
+  }
+}
