@@ -1,0 +1,24 @@
+batch_dir      : /mnt/kfs/alice/work/style0914
+pipeline_file  : /mnt/kfs/alice/work/style0914/Prompt_with_images_style0914.csv
+source_dir     : 20260904-非写实风格化-4148-qt-2072-s35-2076
+output_dirs    : ['20260904-非写实风格化-4148-qt-2072-s35-2076-qt-round1']
+path_style     : relative | min_outputs: 1
+no_colormatch  : ALL
+
+原图（磁盘）  : 61
+pipeline 原图 : 61
+写出行数      : 61
+每图输出数分布: {'outputs_1': 61}
+扩展名修正    : 0 样例: []
+目录名修正    : 0 样例: []
+同名多格式    : 0 []
+原图无法定位  : 0 []
+输出文件缺失  : 0 []
+id 重复       : 0 []
+
+未被 pipeline 覆盖的原图（按标签）: 0
+
+每个标签的 colormatch 用法（plain = 未做 colormatch）:
+     二次元平涂 总计 61 | plain 61 | colormatched 0
+
+已写出: /mnt/kfs/alice/pipeline/batches/style0914/style0914_风格_final.csv
