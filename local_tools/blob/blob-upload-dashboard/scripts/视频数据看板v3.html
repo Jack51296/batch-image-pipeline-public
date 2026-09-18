@@ -1,0 +1,2045 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>视频数据看板</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #f5f6fa;
+    --card: #ffffff;
+    --ink: #1f2430;
+    --ink-2: #5b6472;
+    --ink-3: #9aa3b2;
+    --line: #e8ebf1;
+    --accent: #5b6cf9;
+    --accent-soft: #eef0fe;
+    --green: #12b76a;
+    --green-soft: #e9f9f1;
+    --orange: #f79009;
+    --orange-soft: #fef4e6;
+    --red: #f04438;
+    --red-soft: #fdeceb;
+    --radius: 14px;
+    --shadow: 0 1px 2px rgba(16,24,40,.05), 0 4px 16px rgba(16,24,40,.06);
+    --shadow-lg: 0 8px 30px rgba(16,24,40,.12);
+    --sidebar-w: 240px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Inter", "PingFang SC", "Microsoft YaHei", -apple-system, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--ink); line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  input, select, button { font: inherit; }
+
+  /* ---------- 顶栏 ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 60;
+    background: rgba(255,255,255,.9); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar-inner {
+    max-width: 1680px; margin: 0 auto; padding: 12px 24px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .logo {
+    width: 34px; height: 34px; border-radius: 10px; flex: none;
+    background: linear-gradient(135deg, #6a7bff, #8f5bf9);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 16px; box-shadow: 0 4px 12px rgba(91,108,249,.35);
+  }
+  .title-wrap h1 { font-size: 16px; font-weight: 700; letter-spacing: .2px; }
+  .title-wrap p  { font-size: 11.5px; color: var(--ink-3); margin-top: -3px; }
+
+  /* 文件切换下拉：顶栏主角 */
+  .file-picker { flex: 1; min-width: 300px; max-width: 620px; position: relative; }
+  .file-picker select {
+    width: 100%; padding: 9px 34px 9px 13px;
+    border: 1px solid var(--accent); border-radius: 9px;
+    background: #fff; color: var(--ink); font-size: 13.5px; font-weight: 500;
+    outline: none; cursor: pointer; appearance: none;
+    box-shadow: 0 0 0 3px rgba(91,108,249,.1);
+  }
+  .file-picker::after {
+    content: '▾'; position: absolute; right: 13px; top: 50%; transform: translateY(-50%);
+    color: var(--accent); pointer-events: none; font-size: 12px;
+  }
+  .icon-btn {
+    border: 1px solid var(--line); background: #fff; color: var(--ink-2);
+    padding: 9px 13px; border-radius: 9px; cursor: pointer; font-size: 13px;
+    transition: all .15s ease; white-space: nowrap;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .btn {
+    border: none; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 600;
+    transition: all .18s ease; white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(91,108,249,.3); }
+  .btn-primary:hover { background: #4a5bf0; }
+  .btn-ghost { background: var(--accent-soft); color: var(--accent); }
+  .btn-ghost:hover { background: #e2e6fd; }
+
+  /* ---------- 筛选条 ---------- */
+  .filterbar {
+    background: #fff; border-bottom: 1px solid var(--line);
+    position: sticky; top: 59px; z-index: 55;
+  }
+  .filterbar-inner {
+    max-width: 1680px; margin: 0 auto; padding: 10px 24px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .fgroup { display: flex; align-items: center; gap: 7px; }
+  .fgroup > .flabel { font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+  .pill {
+    border: 1px solid var(--line); background: #fff; color: var(--ink-2);
+    padding: 5px 13px; border-radius: 99px; cursor: pointer; font-size: 12.5px;
+    font-weight: 600; transition: all .15s ease; user-select: none; white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .pill .cnt { font-weight: 500; opacity: .65; font-size: 11.5px; }
+  .pill:hover { border-color: #c8cede; }
+  .pill.on { border-color: #b9c1fc; background: var(--accent-soft); color: #3b4ae0; }
+  .pill.on.p-ref    { background: var(--orange-soft); border-color: #f6c88a; color: #b45309; }
+  .pill.on.p-source { background: var(--accent-soft);  border-color: #b9c1fc; color: #3b4ae0; }
+  .pill.on.p-target { background: var(--green-soft);   border-color: #9fe3c1; color: #067647; }
+  .pill.off { opacity: .5; text-decoration: line-through; }
+  select.mini {
+    border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px;
+    background: #fff; color: var(--ink-2); font-size: 12.5px; cursor: pointer; outline: none;
+  }
+  select.mini:focus { border-color: var(--accent); }
+  .divider { width: 1px; height: 22px; background: var(--line); }
+  .filterbar .spacer { flex: 1; }
+
+  /* ---------- 主体 ---------- */
+  .layout {
+    max-width: 1680px; margin: 0 auto; padding: 20px 24px 40px;
+    display: grid; grid-template-columns: var(--sidebar-w) minmax(0, 1fr); gap: 22px;
+    align-items: start;
+  }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+
+  /* ---------- 侧栏 ---------- */
+  .sidebar {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden;
+    position: sticky; top: 116px; max-height: calc(100vh - 140px);
+    display: flex; flex-direction: column;
+  }
+  .sb-head { padding: 13px 15px 11px; border-bottom: 1px solid var(--line); }
+  .sb-head .sb-title {
+    display: flex; align-items: baseline; gap: 7px; margin-bottom: 9px;
+  }
+  .sb-title b { font-size: 13.5px; }
+  .sb-title span { font-size: 11.5px; color: var(--ink-3); }
+  .sb-head select { width: 100%; }
+  .sb-list { overflow-y: auto; padding: 7px; }
+  .sb-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 8px; cursor: pointer;
+    font-size: 12.5px; color: var(--ink-2); transition: background .12s;
+  }
+  .sb-item:hover { background: var(--bg); }
+  .sb-item.on { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .sb-item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sb-item .ct { font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .sb-item.on .ct { color: var(--accent); }
+
+  /* ---------- 统计卡 ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 16px; }
+  @media (max-width: 720px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+  .stat {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 14px 18px; box-shadow: var(--shadow);
+  }
+  .stat b { display: block; font-size: 25px; font-weight: 700; line-height: 1.25; font-variant-numeric: tabular-nums; }
+  .stat span { font-size: 12px; color: var(--ink-3); }
+  .stat.warn b { color: var(--orange); }
+  .stat.ok b { color: var(--green); }
+
+  /* ---------- 搜索 + 分页头 ---------- */
+  .listhead { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .search-wrap { flex: 1; min-width: 220px; position: relative; }
+  .search-wrap input {
+    width: 100%; padding: 10px 15px 10px 38px;
+    border: 1px solid var(--line); border-radius: 11px; font-size: 13.5px;
+    background: var(--card); color: var(--ink); outline: none; box-shadow: var(--shadow);
+  }
+  .search-wrap input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,108,249,.15); }
+  .search-wrap .s-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--ink-3); }
+  .result-note { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+
+  /* ---------- 卡片 ---------- */
+  .card {
+    background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow);
+    border: 1px solid var(--line); margin-bottom: 20px; overflow: hidden;
+    animation: rise .3s ease both;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+  .card-head { display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .index-badge { background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 12px; padding: 4px 12px; border-radius: 99px; }
+  .card-title { font-size: 15px; font-weight: 700; }
+  .card-head .spacer { flex: 1; }
+  .meta-tag {
+    font-size: 11.5px; padding: 3px 9px; border-radius: 6px;
+    background: var(--bg); color: var(--ink-2); border: 1px solid var(--line);
+  }
+  .meta-tag.miss { background: var(--red-soft); color: var(--red); border-color: #f8c8c4; }
+
+  .media-grid { display: grid; gap: 16px; padding: 18px 20px; }
+  .media-box { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+  .media-label { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; }
+  .tag { padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; }
+  .tag-ref    { background: var(--orange-soft); color: #b45309; }
+  .tag-source { background: var(--accent-soft);  color: #3b4ae0; }
+  .tag-target { background: var(--green-soft);   color: #067647; }
+  .media-label .fname { color: var(--ink-3); font-weight: 500; font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .media-frame {
+    position: relative; border-radius: 11px; overflow: hidden;
+    background: #eef0f5; border: 1px solid var(--line);
+    aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center;
+  }
+  .media-frame video, .media-frame img { width: 100%; height: 100%; object-fit: contain; background: #f4f5f9; }
+  /* 滑动对比比并排高不少，参考图跟着撑满，免得旁边空一大块 */
+  .media-box.stretch .media-frame { aspect-ratio: auto; flex: 1; min-height: 150px; }
+  .media-frame img { cursor: zoom-in; }
+  .media-frame .broken { color: var(--ink-3); font-size: 12px; text-align: center; padding: 12px; }
+  .media-actions { display: flex; gap: 7px; }
+  .mini-btn {
+    border: 1px solid var(--line); background: #fff; color: var(--ink-2);
+    font-size: 11.5px; padding: 4px 11px; border-radius: 7px; cursor: pointer;
+    transition: all .15s ease; font-weight: 500;
+  }
+  .mini-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+  .mini-btn.ok { border-color: var(--green); color: var(--green); background: var(--green-soft); }
+  .mini-btn.act { border-color: var(--accent); color: #fff; background: var(--accent); }
+
+  /* ---------- 左右滑动对比 ---------- */
+  .wipe { display: flex; flex-direction: column; gap: 9px; min-width: 0; }
+  .wipe-head { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; min-width: 0; }
+  .wipe-head .fname {
+    color: var(--ink-3); font-weight: 500; font-size: 11.5px; flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .wipe-head .swap { color: var(--ink-3); }
+  .wipe-stage {
+    position: relative; border-radius: 11px; overflow: hidden;
+    background: #0f1218; border: 1px solid var(--line);
+    aspect-ratio: 16/9; cursor: ew-resize; outline: none;
+    user-select: none; touch-action: none;
+    max-height: 78vh;          /* 竖图按原比例会很高，别超过一屏 */
+  }
+  .wipe-stage:focus-visible { box-shadow: 0 0 0 3px rgba(91,108,249,.35); }
+  .wipe-layer { position: absolute; inset: 0; }
+  .wipe-layer > video, .wipe-layer > img { width: 100%; height: 100%; object-fit: contain; display: block; }
+  .wipe-layer.top { clip-path: inset(0 50% 0 0); }
+  .wipe-layer .broken {
+    position: absolute; inset: 0; background: #171b24; color: #9aa3b2;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; text-align: center; padding: 12px;
+  }
+  .wipe-handle {
+    position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; margin-left: -1px;
+    background: rgba(255,255,255,.92); box-shadow: 0 0 6px rgba(0,0,0,.5); pointer-events: none;
+  }
+  .wipe-knob {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+    width: 32px; height: 32px; border-radius: 50%; background: #fff; color: var(--accent);
+    font-size: 13px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 10px rgba(16,24,40,.45);
+  }
+  .wipe-badge {
+    position: absolute; top: 10px; padding: 3px 9px; border-radius: 6px;
+    font-size: 11.5px; font-weight: 700; color: #fff;
+    background: rgba(15,18,24,.62); pointer-events: none;
+  }
+  .wipe-badge.l { left: 10px; }
+  .wipe-badge.r { right: 10px; }
+  .wipe-tip {
+    position: absolute; left: 50%; bottom: 9px; transform: translateX(-50%);
+    font-size: 11px; color: rgba(255,255,255,.8); background: rgba(15,18,24,.5);
+    padding: 2px 10px; border-radius: 99px; pointer-events: none; transition: opacity .3s;
+  }
+  .wipe-stage.touched .wipe-tip { opacity: 0; }
+  .wipe-ctrl { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .wipe-seek { flex: 1; min-width: 110px; height: 4px; accent-color: var(--accent); cursor: pointer; }
+  .wipe-time { font-size: 11.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .wipe-warn { font-size: 11px; color: var(--orange); white-space: nowrap; }
+  .wipe:fullscreen { background: #0f1218; padding: 14px 18px; gap: 12px; }
+  /* 全屏时改由 flex 撑高，要盖掉 JS 按素材比例写上的行内 aspect-ratio */
+  .wipe:fullscreen .wipe-stage { flex: 1; min-height: 0; max-height: none; aspect-ratio: auto !important; }
+  .wipe:fullscreen .wipe-head, .wipe:fullscreen .wipe-time { color: #dfe3ec; }
+  .wipe:fullscreen .mini-btn {
+    background: rgba(255,255,255,.1); border-color: rgba(255,255,255,.24); color: #e8ebf1;
+  }
+  .wipe:fullscreen .mini-btn.act { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  /* ---------- prompts ---------- */
+  .prompt-area { padding: 2px 20px 18px; display: flex; flex-direction: column; gap: 10px; }
+  .prompt-block { background: #fafbfd; border: 1px solid var(--line); border-radius: 11px; padding: 12px 15px; }
+  .prompt-block .p-head { display: flex; align-items: center; gap: 9px; cursor: pointer; user-select: none; }
+  .p-head .p-title { font-size: 12.5px; font-weight: 700; color: var(--ink-2); }
+  .p-head .caret { margin-left: auto; color: var(--ink-3); font-size: 10px; transition: transform .2s; }
+  .prompt-block.open .caret { transform: rotate(180deg); }
+  .p-body {
+    font-size: 13px; color: var(--ink-2); margin-top: 8px;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    white-space: pre-wrap; word-break: break-word;
+  }
+  .prompt-block.open .p-body { display: block; -webkit-line-clamp: unset; }
+
+  /* ---------- 分页 ---------- */
+  .pager { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 8px 0 4px; flex-wrap: wrap; }
+  .pg {
+    min-width: 34px; height: 34px; padding: 0 10px;
+    border: 1px solid var(--line); background: #fff; color: var(--ink-2);
+    border-radius: 8px; cursor: pointer; font-size: 13px;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .pg:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .pg.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .pg:disabled { opacity: .4; cursor: not-allowed; }
+  .pg-gap { color: var(--ink-3); padding: 0 2px; }
+
+  /* ---------- 空态 / 引导 ---------- */
+  .dropzone {
+    border: 2px dashed #cdd4e0; border-radius: 20px; background: var(--card);
+    padding: 60px 36px; text-align: center; transition: all .25s ease; cursor: pointer;
+  }
+  .dropzone:hover, .dropzone.dragover { border-color: var(--accent); background: #fbfbff; box-shadow: var(--shadow-lg); }
+  .dropzone .dz-icon {
+    width: 62px; height: 62px; margin: 0 auto 18px; border-radius: 18px;
+    background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center; font-size: 26px;
+  }
+  .dropzone h2 { font-size: 18px; font-weight: 700; margin-bottom: 7px; }
+  .dropzone p { color: var(--ink-3); font-size: 13px; }
+  .dropzone .hint { margin-top: 16px; font-size: 12px; color: var(--ink-3); line-height: 1.9; }
+  .dropzone code { background: var(--bg); border: 1px solid var(--line); padding: 2px 7px; border-radius: 5px; font-size: 11.5px; }
+  .url-row { margin: 20px auto 0; max-width: 540px; display: flex; gap: 9px; cursor: default; }
+  .url-row input {
+    flex: 1; padding: 10px 14px; border: 1px solid var(--line); border-radius: 9px;
+    font-size: 13px; background: var(--bg); outline: none;
+  }
+  .url-row input:focus { border-color: var(--accent); background: #fff; }
+  .empty-result { text-align: center; color: var(--ink-3); padding: 60px 0; font-size: 14px; }
+
+  /* ---------- 图墙（仅看单一素材） ---------- */
+  .grid {
+    display: grid; gap: 14px;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  }
+  .gitem {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    overflow: hidden; box-shadow: var(--shadow); animation: rise .3s ease both;
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .gitem:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .gthumb {
+    display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover;
+    background: #11141c; cursor: zoom-in;
+  }
+  .gitem .gbroken {
+    aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center;
+    background: var(--bg); color: var(--ink-3); font-size: 12px; text-align: center;
+  }
+  .gcap { padding: 8px 10px; }
+  .gcap .gtop { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .gcap .gidx { color: var(--ink-3); font-size: 11px; }
+  .gcap .gnum { font-weight: 700; font-size: 12.5px; }
+  .gcap .gname {
+    font-size: 11.5px; color: var(--ink-3);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+
+  .lightbox {
+    position: fixed; inset: 0; z-index: 100; display: none;
+    background: rgba(30,34,44,.72); backdrop-filter: blur(6px);
+    align-items: center; justify-content: center; padding: 40px; cursor: zoom-out;
+  }
+  .lightbox.show { display: flex; }
+  .lightbox img, .lightbox video {
+    max-width: 100%; max-height: 100%; border-radius: 12px;
+    box-shadow: var(--shadow-lg); cursor: default;
+  }
+  .lightbox video { background: #000; }
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--ink); color: #fff; font-size: 13px;
+    padding: 10px 22px; border-radius: 99px; opacity: 0; pointer-events: none;
+    transition: all .25s ease; z-index: 120; box-shadow: var(--shadow-lg);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  input[type="file"] { display: none; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="logo">▶</div>
+    <div class="title-wrap">
+      <h1>视频数据看板</h1>
+      <p>Video Dataset Dashboard</p>
+    </div>
+    <div class="file-picker">
+      <select id="fileSelect"><option value="">— 请选择清单文件 —</option></select>
+    </div>
+    <button class="icon-btn" id="refreshBtn" title="重新扫描 upload_content">⟳ 刷新</button>
+    <button class="icon-btn" id="dirBtn" title="选一次文件夹，页面自动列出里面所有 xlsx/csv/json">📁 选择文件夹</button>
+    <button class="icon-btn" id="pickBtn">📂 单个文件</button>
+    <button class="icon-btn" id="urlBtn">🔗 链接</button>
+  </div>
+</div>
+
+<div class="filterbar hidden" id="filterbar">
+  <div class="filterbar-inner">
+    <div class="fgroup">
+      <span class="flabel">视图</span>
+      <span class="pill on" data-view="card">对比卡片</span>
+      <span class="pill off" data-view="grid">图墙</span>
+    </div>
+    <div class="divider"></div>
+    <div class="fgroup" id="mediaGroup">
+      <span class="flabel">显示</span>
+      <span class="pill on p-ref"    data-media="reference_image">参考图 <span class="cnt" id="cntRef"></span></span>
+      <span class="pill on p-source" data-media="source_video">原视频 <span class="cnt" id="cntSource"></span></span>
+      <span class="pill on p-target" data-media="target_video">目标视频 <span class="cnt" id="cntTarget"></span></span>
+    </div>
+    <div class="fgroup" id="cmpGroup">
+      <span class="flabel">原视频 / 目标视频</span>
+      <span class="pill on" data-cmp="wipe">⇄ 滑动对比</span>
+      <span class="pill off" data-cmp="side">▥ 并排</span>
+    </div>
+    <div class="fgroup hidden" id="gridColGroup">
+      <span class="flabel">只看</span>
+      <select class="mini" id="gridColSelect">
+        <option value="source_video">原视频</option>
+        <option value="target_video">目标视频</option>
+        <option value="reference_image">参考图</option>
+      </select>
+    </div>
+    <div class="divider"></div>
+    <div class="fgroup">
+      <span class="flabel">仅看</span>
+      <select class="mini" id="onlySelect">
+        <option value="all">全部条目</option>
+        <option value="has_target">有目标视频</option>
+        <option value="no_target">缺目标视频</option>
+        <option value="has_ref">有参考图</option>
+        <option value="no_ref">缺参考图</option>
+        <option value="complete">三件齐全</option>
+        <option value="incomplete">有缺失</option>
+      </select>
+    </div>
+    <div class="fgroup">
+      <span class="flabel">排序</span>
+      <select class="mini" id="sortSelect">
+        <option value="origin">原始顺序</option>
+        <option value="index_asc">编号升序</option>
+        <option value="index_desc">编号降序</option>
+      </select>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost" id="playAllBtn" style="padding:7px 14px;font-size:12.5px;">▶ 本页同时播放</button>
+    <div class="fgroup">
+      <select class="mini" id="pageSizeSelect">
+        <option value="5">5 / 页</option>
+        <option value="10" selected>10 / 页</option>
+        <option value="20">20 / 页</option>
+        <option value="50">50 / 页</option>
+        <option value="60">60 / 页</option>
+        <option value="120">120 / 页</option>
+        <option value="9999">全部</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- 侧栏 -->
+  <aside class="sidebar hidden" id="sidebar">
+    <div class="sb-head">
+      <div class="sb-title"><b>分类目录</b><span id="groupCount"></span></div>
+      <select class="mini" id="groupSelect"></select>
+    </div>
+    <div class="sb-list" id="sbList"></div>
+  </aside>
+
+  <main style="min-width:0">
+    <!-- 引导页 -->
+    <div id="intro">
+      <div class="dropzone" id="dropzone">
+        <div class="dz-icon">⇪</div>
+        <h2>选择上方清单文件，或拖拽 / 点击上传</h2>
+        <p>支持 .xlsx / .csv / .json · 数据在浏览器本地解析</p>
+        <div class="hint" id="introHint">
+          清单需包含列：<code>index</code> <code>source_video_url</code> <code>target_video_url</code> <code>reference_image_url</code> <code>prompt_*</code><br>
+          想让顶部下拉自动列出你上传过的文件，请运行 <code>python dashboard_server.py</code>，再访问 <code>http://本机IP:8765/</code>
+        </div>
+        <div class="url-row" id="urlRow">
+          <input type="text" id="urlInput" placeholder="粘贴 blob 链接，或清单文件路径">
+          <button class="btn btn-primary" id="urlLoadBtn">读取</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 数据区 -->
+    <div id="dataArea" class="hidden">
+      <div class="stats">
+        <div class="stat"><b id="stFiltered">0</b><span>当前筛选</span></div>
+        <div class="stat"><b id="stTotal">0</b><span>清单总条数</span></div>
+        <div class="stat ok"><b id="stGroups">0</b><span>分类数量</span></div>
+        <div class="stat warn"><b id="stMissing">0</b><span>素材缺失</span></div>
+      </div>
+      <div class="listhead">
+        <div class="search-wrap">
+          <span class="s-icon">⌕</span>
+          <input type="text" id="searchInput" placeholder="搜索编号、prompt 关键词、文件名…">
+        </div>
+        <div class="result-note" id="resultNote"></div>
+      </div>
+      <div id="cards"></div>
+      <div class="empty-result hidden" id="emptyResult">没有匹配的条目</div>
+      <div class="pager" id="pager"></div>
+    </div>
+  </main>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <img id="lightboxImg" alt="">
+  <video id="lightboxVideo" class="hidden" controls playsinline></video>
+</div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fileInput" accept=".xlsx,.xls,.csv,.json">
+<input type="file" id="dirInput" webkitdirectory directory multiple>
+
+<script>
+(function () {
+  'use strict';
+
+  var $ = function (id) { return document.getElementById(id); };
+  var SERVED = /^https?:$/.test(location.protocol);
+  var SRC_KEY = 'dashboardSrc';
+  // 页面所在目录，用来把 0806/xxx.csv 这类相对路径拼成同源地址
+  var PAGE_BASE = location.href.replace(/[?#].*$/, '').replace(/[^/]*$/, '');
+  // server：本机 dashboard_server.py，有 /api/* 接口
+  // static：页面被托管在 BS3 等纯对象存储上，只能读同目录的 dashboard_index.json
+  // file  ：本地双击打开，什么都读不了，只能靠「选择文件夹」
+  var apiMode = SERVED ? 'server' : 'file';
+  var staticIndex = null;
+  var INDEX_NAME = 'dashboard_index.json';
+  // 索引可能和页面同级（上传到 BS3 后就是这样），也可能在 upload_content/ 里
+  // （页面留在脚本目录、被别的静态服务托管时）。找到哪份就以哪份所在目录为基准
+  var INDEX_CANDIDATES = [INDEX_NAME, 'upload_content/' + INDEX_NAME, '../' + INDEX_NAME];
+  var dataBase = '';
+
+  function absUrl(src, base) {
+    base = base || PAGE_BASE;
+    try { return new URL(src, base).href; } catch (e) { return base + src; }
+  }
+
+  /* ======================= 状态 ======================= */
+  var state = {
+    rows: [],                 // 归一化后的全部条目
+    fileLabel: '',
+    groupBy: 'completeness',
+    activeGroup: '',          // '' = 全部
+    groupCount: 0,
+    search: '',
+    media: { reference_image: true, source_video: true, target_video: true },
+    only: 'all',
+    sort: 'origin',
+    page: 1,
+    pageSize: 10,
+    view: 'card',             // card = 对比卡片；grid = 只看一种素材的图墙
+    gridCol: 'source_video',
+    cmp: 'wipe',              // wipe = 原/目标叠在一起拉分割线；side = 老的左右并排
+    wipePos: 50               // 分割线位置，拖过一次后新卡片沿用，省得每张重新拖
+  };
+
+  var MEDIA_DEFS = [
+    { col: 'reference_image', label: '参考图',   tagClass: 'tag-ref',    type: 'image' },
+    { col: 'source_video',    label: '原视频',   tagClass: 'tag-source', type: 'video' },
+    { col: 'target_video',    label: '目标视频', tagClass: 'tag-target', type: 'video' }
+  ];
+  var PROMPT_DEFS = [
+    { col: 'prompt_setting', label: '场景设定 · Prompt Setting' },
+    { col: 'prompt_source',  label: '原视频描述 · Prompt Source' },
+    { col: 'prompt_target',  label: '目标视频描述 · Prompt Target' }
+  ];
+  // 分组维度按数据动态挑选：只有一类的维度不显示（比如单批次时的「按批次」）
+  var ALL_GROUP_DEFS = [
+    { key: 'completeness', label: '按素材完整度' },
+    { key: 'batch',        label: '按批次' },
+    { key: 'shot',         label: '按镜头形式' },
+    { key: 'category',     label: '按类别' },
+    { key: 'color',        label: '按颜色' }
+  ];
+  var MEDIA_FILE_RE = /\.(mp4|mov|webm|png|jpe?g|webp|gif)$/i;
+
+  /* ======================= 工具 ======================= */
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fileName(src) {
+    try { return decodeURIComponent(String(src).split('?')[0].split('/').pop()); } catch (e) { return ''; }
+  }
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg; t.classList.add('show');
+    clearTimeout(t._timer);
+    t._timer = setTimeout(function () { t.classList.remove('show'); }, 2400);
+  }
+  function humanSize(n) {
+    if (!n) return '';
+    if (n < 1024) return n + ' B';
+    if (n < 1048576) return (n / 1024).toFixed(0) + ' KB';
+    return (n / 1048576).toFixed(1) + ' MB';
+  }
+
+  /* ======================= 解析：csv / json / xlsx ======================= */
+  // CSV 必须自己解析：prompt 列里有逗号、引号和换行，简单 split 会把一行拆散
+  function parseCSV(text) {
+    if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    var rows = [], row = [], field = '', inQuotes = false, i = 0;
+    while (i < text.length) {
+      var ch = text[i];
+      if (inQuotes) {
+        if (ch === '"') {
+          if (text[i + 1] === '"') { field += '"'; i += 2; continue; }
+          inQuotes = false; i++; continue;
+        }
+        field += ch; i++; continue;
+      }
+      if (ch === '"') { inQuotes = true; i++; continue; }
+      if (ch === ',') { row.push(field); field = ''; i++; continue; }
+      if (ch === '\r') { i++; continue; }
+      if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; i++; continue; }
+      field += ch; i++;
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    if (!rows.length) return [];
+    var header = rows[0].map(function (h) { return String(h).trim(); });
+    return rows.slice(1).filter(function (r) {
+      return r.some(function (c) { return String(c).trim() !== ''; });
+    }).map(function (r) {
+      var o = {};
+      header.forEach(function (h, k) { o[h] = r[k] == null ? '' : r[k]; });
+      return o;
+    });
+  }
+
+  function parseJSON(text) {
+    var data = JSON.parse(text);
+    if (data && !Array.isArray(data)) {
+      var keys = ['rows', 'data', 'items', 'list'];
+      for (var i = 0; i < keys.length; i++) {
+        if (Array.isArray(data[keys[i]])) { data = data[keys[i]]; break; }
+      }
+      if (!Array.isArray(data)) data = [data];
+    }
+    return (data || []).filter(function (r) { return r && typeof r === 'object'; });
+  }
+
+  function parseXLSX(buf) {
+    if (typeof XLSX === 'undefined') throw new Error('表格解析库未加载，请检查网络后刷新（或改用 csv/json）');
+    var wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
+    return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+  }
+
+  function parseByExt(name, buf, text) {
+    var ext = (name.split('?')[0].match(/\.(\w+)$/) || [, ''])[1].toLowerCase();
+    if (ext === 'csv') return parseCSV(text);
+    if (ext === 'json') return parseJSON(text);
+    return parseXLSX(buf);
+  }
+
+  /* ======================= 归一化 ======================= */
+  var CAT_RE   = /【\s*类别\s*】\s*([^；;。\n【】]+)/;
+  var SHOT_RE  = /镜头形式\s*[：:]\s*([^；;。\n]+)/;
+  var COLOR_RE = /颜色\s*[：:]\s*([^；;。\n]+)/;
+
+  // expect 列声明这条素材本该有哪几件，如「原视频,目标视频」。纯视频转视频的批次
+  // 本来就没有参考图，不该被判成缺失。没有这一列的清单仍按三件齐全的老规矩判定。
+  var EXPECT_ALIAS = {
+    '参考图': 'reference_image', '参考图片': 'reference_image', '首帧图': 'reference_image',
+    'reference_image': 'reference_image',
+    '原视频': 'source_video', '源视频': 'source_video', 'source_video': 'source_video',
+    '目标视频': 'target_video', '生成视频': 'target_video', 'target_video': 'target_video'
+  };
+  var EXPECT_ALL = { reference_image: true, source_video: true, target_video: true };
+
+  function expectedOf(row) {
+    var raw = String((row && (row.expect || row['期望素材'])) || '').trim();
+    if (!raw) return EXPECT_ALL;
+    var out = { reference_image: false, source_video: false, target_video: false };
+    var hit = 0;
+    raw.split(/[,，、\/|\s]+/).forEach(function (t) {
+      var col = EXPECT_ALIAS[t.trim()];
+      if (col) { out[col] = true; hit++; }
+    });
+    // 写法不认识时退回老规矩，避免把整行误判成什么都不该有
+    return hit ? out : EXPECT_ALL;
+  }
+
+  function completenessOf(has, expected) {
+    var lack = MEDIA_DEFS.filter(function (d) { return expected[d.col] && !has[d.col]; });
+    if (lack.length) {
+      return { label: '缺' + lack.map(function (d) { return d.label; }).join('、'),
+               missing: true };
+    }
+    var n = MEDIA_DEFS.filter(function (d) { return expected[d.col]; }).length;
+    return { label: n === MEDIA_DEFS.length ? '三件齐全' : '符合预期', missing: false };
+  }
+
+  // 逐字段匹配（不能把三个 prompt 拼起来再匹配，否则会跨字段吃掉后面的文字）
+  function pickFrom(re, texts, headOnly) {
+    for (var i = 0; i < texts.length; i++) {
+      var m = re.exec(texts[i] || '');
+      if (m) {
+        var v = m[1].trim();
+        if (headOnly) v = v.split(/[（(]/)[0].trim();
+        if (v) return v;
+      }
+    }
+    return '';
+  }
+
+  // 从素材 URL 里反推批次目录：.../Blender_data/0729/target_video/xxx.mp4 -> 0729
+  function batchOf(media) {
+    for (var i = 0; i < MEDIA_DEFS.length; i++) {
+      var u = media[MEDIA_DEFS[i].col];
+      if (!u) continue;
+      var m = u.split('?')[0].match(/Blender_data\/([^/]+)\//);
+      if (m) return m[1];
+    }
+    return '';
+  }
+
+  function mediaUrl(row, col) {
+    var url = String(row[col + '_url'] || '').trim();
+    if (/^https?:\/\//i.test(url)) return url;
+    var p = String(row[col] || '').trim();
+    return /^https?:\/\//i.test(p) ? p : '';
+  }
+
+  /* ---------- 由「已上传文件列表」反推条目 ----------
+     线上只有一堆文件路径，没有清单表。按目录名 / 文件名前缀判断它是原视频、
+     目标视频还是参考图，再按结尾编号把同一条的三个素材配成一行。         */
+  function roleOf(parts, name) {
+    var folder = parts.length > 1 ? parts[parts.length - 2] : '';
+    if (folder === 'source_video') return 'source_video';
+    if (folder === 'target_video') return 'target_video';
+    if (folder === 'reference_image') return 'reference_image';
+    if (/^source[_-]?video/i.test(name)) return 'source_video';
+    if (/^target[_-]?video/i.test(name)) return 'target_video';
+    if (/^(image|ref|reference)[_-]?\d/i.test(name)) return 'reference_image';
+    return /\.(png|jpe?g|webp|gif)$/i.test(name) ? 'reference_image' : 'source_video';
+  }
+
+  function uploadsToRows(records, label) {
+    var buckets = {}, order = [];
+    records.forEach(function (rec) {
+      var path = String(rec.path || '').replace(/\\/g, '/').replace(/^\/+/, '');
+      if (!path) return;
+      var parts = path.split('/');
+      var name = parts[parts.length - 1];
+      if (!MEDIA_FILE_RE.test(name)) return;
+
+      var batch = parts.length > 1 ? parts[0] : '(根目录)';
+      var stem = name.replace(/\.[^.]+$/, '');
+      var num = stem.match(/(\d+)\s*$/);
+      // 只有 source_video_01 / image_01 这类约定命名才按编号配对；
+      // 其它文件（如 g01_004_heli_air_pass_stm1.mp4）各自独立成一行
+      var conventional = /^(source[_-]?video|target[_-]?video|reference[_-]?image|image|ref)/i.test(stem);
+      var pairId = (conventional && num) ? num[1] : stem;
+      var key = batch + '||' + pairId;
+
+      if (!buckets[key]) {
+        buckets[key] = { batch: batch, pairId: pairId, media: {}, bytes: 0 };
+        order.push(key);
+      }
+      var b = buckets[key];
+      var role = roleOf(parts, name);
+      if (!b.media[role]) {
+        b.media[role] = rec.url;
+        b.bytes += rec.size || 0;
+      }
+    });
+
+    order.sort(function (a, b) {
+      var x = buckets[a], y = buckets[b];
+      if (x.batch !== y.batch) return y.batch.localeCompare(x.batch, 'zh');
+      return String(x.pairId).localeCompare(String(y.pairId), 'zh', { numeric: true });
+    });
+
+    return order.map(function (key, i) {
+      var b = buckets[key];
+      var media = {
+        reference_image: b.media.reference_image || '',
+        source_video: b.media.source_video || '',
+        target_video: b.media.target_video || ''
+      };
+      var names = MEDIA_DEFS.map(function (d) { return fileName(media[d.col]); });
+      // 线上文件列表里没有 expect 信息，只能按三件齐全判定
+      var has = { target_video: !!media.target_video,
+                  source_video: !!media.source_video,
+                  reference_image: !!media.reference_image };
+      var comp = completenessOf(has, EXPECT_ALL);
+      return {
+        i: i,
+        index: b.batch + ' · ' + b.pairId,
+        file: label,
+        batch: b.batch,
+        bytes: b.bytes,
+        media: media,
+        prompts: { prompt_setting: '', prompt_source: '', prompt_target: '' },
+        cats: { category: '未标注类别', shot: '未标注镜头', color: '未标注颜色' },
+        expected: EXPECT_ALL,
+        completeness: comp.label,
+        missing: comp.missing,
+        has: has,
+        searchText: (b.batch + ' ' + b.pairId + ' ' + names.join(' ')).toLowerCase()
+      };
+    });
+  }
+
+  function normalize(rawRows, label) {
+    return rawRows.map(function (row, i) {
+      var media = {};
+      MEDIA_DEFS.forEach(function (d) { media[d.col] = mediaUrl(row, d.col); });
+
+      var prompts = {};
+      PROMPT_DEFS.forEach(function (d) { prompts[d.col] = String(row[d.col] || '').trim(); });
+      var texts = PROMPT_DEFS.map(function (d) { return prompts[d.col]; });
+
+      var has = { target_video: !!media.target_video,
+                  source_video: !!media.source_video,
+                  reference_image: !!media.reference_image };
+      var expected = expectedOf(row);
+      var comp = completenessOf(has, expected);
+
+      var indexVal = String(row.index || row.Index || row['编号'] || (i + 1));
+      var names = MEDIA_DEFS.map(function (d) { return fileName(media[d.col]); });
+
+      return {
+        i: i,
+        index: indexVal,
+        file: label,
+        batch: batchOf(media),
+        media: media,
+        prompts: prompts,
+        cats: {
+          category: pickFrom(CAT_RE, texts, false) || '未标注类别',
+          shot: pickFrom(SHOT_RE, texts, true) || '未标注镜头',
+          color: pickFrom(COLOR_RE, texts, true) || '未标注颜色'
+        },
+        expected: expected,
+        completeness: comp.label,
+        missing: comp.missing,
+        has: has,
+        searchText: (indexVal + ' ' + texts.join(' ') + ' ' + names.join(' ')).toLowerCase()
+      };
+    });
+  }
+
+  /* ======================= 载入 ======================= */
+  function loadRows(rawRows, label) {
+    if (!rawRows || !rawRows.length) { toast('清单里没有数据行'); return; }
+    var first = rawRows[0] || {};
+    // 上传脚本产出的 _blob_urls.csv 没有 index/prompt，只有一列列文件路径 + URL，
+    // 走「已上传文件」那套反推逻辑，同样能拼出对比卡片
+    if (('relative_path' in first || 'url' in first) && !('index' in first)) {
+      showRows(uploadsToRows(rawRows.map(function (r) {
+        return { path: r.relative_path || r.path || r.filename || '',
+                 url: r.url || '', size: parseInt(r.size_bytes || r.size || 0, 10) || 0 };
+      }), label), label);
+      return;
+    }
+    showRows(normalize(rawRows, label), label);
+  }
+
+  function showRows(rows, label) {
+    if (!rows.length) { toast('没有解析出可展示的条目'); return; }
+    state.rows = rows;
+    state.fileLabel = label;
+    state.activeGroup = '';
+    state.search = '';
+    state.page = 1;
+    $('searchInput').value = '';
+    $('intro').classList.add('hidden');
+    $('dataArea').classList.remove('hidden');
+    $('filterbar').classList.remove('hidden');
+    $('sidebar').classList.remove('hidden');
+    renderAll();
+    toast('已加载 ' + state.rows.length + ' 条 · ' + label);
+  }
+
+  function loadLocalFile(file) {
+    if (!/\.(xlsx|xls|csv|json)$/i.test(file.name)) { toast('支持 .xlsx / .csv / .json'); return; }
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      try {
+        var buf = e.target.result;
+        var text = /\.(csv|json)$/i.test(file.name) ? new TextDecoder('utf-8').decode(buf) : '';
+        loadRows(parseByExt(file.name, buf, text), file.name);
+      } catch (err) { toast('解析失败：' + err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  function loadFromSource(src, label) {
+    src = String(src || '').trim();
+    if (!src) { toast('请输入链接或清单文件路径'); return; }
+    var isUrl = /^https?:\/\//i.test(src);
+    var fetchUrl;
+    if (isUrl) {
+      fetchUrl = src;
+    } else if (apiMode === 'server') {
+      fetchUrl = '/api/file?src=' + encodeURIComponent(src);
+    } else if (apiMode === 'static') {
+      // 相对索引所在目录解析，索引和清单本来就是一起发布的
+      fetchUrl = absUrl(src, dataBase);
+    } else {
+      toast('读取文件路径需先运行 dashboard_server.py，并通过 http://IP:8765/ 打开本页');
+      return;
+    }
+    toast('正在读取…');
+    fetch(fetchUrl, { cache: 'no-store' }).then(function (resp) {
+      if (!resp.ok) {
+        return resp.text().then(function (t) {
+          var msg = 'HTTP ' + resp.status;
+          try { msg = JSON.parse(t).error || msg; } catch (e) {}
+          throw new Error(msg);
+        });
+      }
+      return resp.arrayBuffer();
+    }).then(function (buf) {
+      try { localStorage.setItem(SRC_KEY, src); } catch (e) {}
+      var text = /\.(csv|json)(\?|$)/i.test(src) ? new TextDecoder('utf-8').decode(buf) : '';
+      loadRows(parseByExt(src, buf, text), label || fileName(src) || src);
+    }).catch(function (err) {
+      var tip = (!SERVED && isUrl) ? '（直接打开 HTML 受跨域限制，建议通过 dashboard_server.py 打开本页）' : '';
+      toast('读取失败：' + err.message + tip);
+    });
+  }
+
+  /* ======================= 顶部文件下拉 ======================= */
+  var localFiles = [];   // 「选择文件夹」拿到的 File 对象，无需服务端
+  var serverData = { files: [], blob: { total: 0, groups: [] }, root: '', error: '' };
+
+  function renderFileSelect(autoPick) {
+    var sel = $('fileSelect');
+    var options = [];
+    sel.innerHTML = '';
+    var ph = document.createElement('option');
+    ph.value = '';
+    sel.appendChild(ph);
+
+    function addGroup(label, entries) {
+      if (!entries.length) return;
+      var g = document.createElement('optgroup');
+      g.label = label;
+      entries.forEach(function (e) {
+        var o = document.createElement('option');
+        o.value = e.value; o.textContent = e.label;
+        g.appendChild(o);
+        options.push(e);
+      });
+      sel.appendChild(g);
+    }
+
+    // 1) 线上实际存在的文件（上传脚本传上去的就是这些）
+    var blob = serverData.blob || { total: 0, groups: [] };
+    if (blob.total) {
+      var online = [{ value: 'blob:', label: '全部线上文件（' + blob.total + ' 个）' }];
+      (blob.groups || []).forEach(function (g) {
+        online.push({ value: 'blob:' + g.name,
+                      label: g.name + '（' + g.count + ' 个 · ' + humanSize(g.size) + '）' });
+      });
+      addGroup('☁ 线上已上传（BS3）', online);
+    }
+
+    // 2) 服务端扫描到的清单
+    var byFolder = {};
+    (serverData.files || []).forEach(function (f) {
+      if (f.kind !== 'items' && f.kind !== 'urls') return;
+      (byFolder[f.folder] = byFolder[f.folder] || []).push(f);
+    });
+    Object.keys(byFolder).sort().reverse().forEach(function (folder) {
+      addGroup('📄 清单 · ' + (folder === '/' ? '(根目录)' : folder),
+        byFolder[folder].map(function (f) {
+          return { value: f.src, label: f.name + '（' + f.rows + ' 条 · ' +
+                   (f.kind === 'urls' ? '上传记录' : f.ext) + ' · ' + humanSize(f.size) + '）' };
+        }));
+    });
+
+    // 3) 浏览器端「选择文件夹」扫到的（不需要服务，file:// 打开也能用）
+    var byDir = {};
+    localFiles.forEach(function (f, i) {
+      var parts = (f.webkitRelativePath || f.name).split('/');
+      var dir = parts.slice(0, -1).join('/') || '(根目录)';
+      (byDir[dir] = byDir[dir] || []).push({
+        value: 'local:' + i, label: f.name + '（' + humanSize(f.size) + '）'
+      });
+    });
+    Object.keys(byDir).sort().reverse().forEach(function (dir) {
+      addGroup('📁 文件夹 · ' + dir, byDir[dir]);
+    });
+
+    if (!options.length) {
+      ph.textContent = serverData.error ? '读取失败：' + serverData.error
+        : (SERVED ? '没扫到数据源，点右侧「选择文件夹」' : '直接打开 HTML 无法自动扫描，点右侧「选择文件夹」');
+      return;
+    }
+    ph.textContent = '— 共 ' + options.length + ' 个数据源，请选择 —';
+
+    if (autoPick) {
+      var saved = '';
+      try { saved = localStorage.getItem(SRC_KEY) || ''; } catch (e) {}
+      var want = options.filter(function (o) { return o.value === saved; })[0] || options[0];
+      sel.value = want.value;
+      pickSource(want.value, want.label);
+    }
+  }
+
+  // 把 dashboard_index.json 转成和 /api/files 一样的结构
+  function indexToServerData(idx) {
+    var groups = {};
+    (idx.files || []).forEach(function (f) {
+      var parts = String(f.path || '').split('/');
+      var top = parts.length > 1 ? parts[0] : '(根目录)';
+      var g = groups[top] || (groups[top] = { name: top, count: 0, size: 0 });
+      g.count += 1;
+      g.size += f.size || 0;
+    });
+    return {
+      files: idx.manifests || [],
+      root: idx.base_url || '',
+      error: '',
+      blob: {
+        total: (idx.files || []).length,
+        groups: Object.keys(groups).sort().reverse().map(function (k) { return groups[k]; })
+      }
+    };
+  }
+
+  // 没有后端时，依次试几个位置找索引文件
+  function loadStaticIndex(autoPick, apiErr) {
+    var tried = [];
+
+    function attempt(i) {
+      if (i >= INDEX_CANDIDATES.length) {
+        apiMode = SERVED ? 'static' : 'file';
+        serverData = {
+          files: [], blob: { total: 0, groups: [] }, root: '',
+          error: '没有后端接口（' + apiErr + '），也没找到 ' + INDEX_NAME +
+                 '（试过 ' + tried.join('、') + '）。改用 dashboard_server.py 打开，' +
+                 '或跑 auto_upload_to_blob.py --publish 后从线上地址打开'
+        };
+        renderFileSelect(false);
+        return;
+      }
+      var cand = INDEX_CANDIDATES[i];
+      return fetch(absUrl(cand), { cache: 'no-store' }).then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (idx) {
+        apiMode = 'static';
+        staticIndex = idx;
+        dataBase = absUrl(cand).replace(/[?#].*$/, '').replace(/[^/]*$/, '');
+        serverData = indexToServerData(idx);
+        renderFileSelect(autoPick);
+      }).catch(function (err) {
+        tried.push(cand + ' ' + err.message);
+        return attempt(i + 1);
+      });
+    }
+
+    return Promise.resolve(attempt(0));
+  }
+
+  function loadFileList(autoPick) {
+    if (!SERVED) { apiMode = 'file'; renderFileSelect(autoPick); return Promise.resolve(); }
+    return fetch('/api/files', { cache: 'no-store' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + (r.statusText || ''));
+      return r.json();
+    }).then(function (data) {
+      if (!data.files) throw new Error('接口返回异常');
+      if (!data.blob) {
+        toast('服务端版本较旧（没有线上文件接口），请重启 dashboard_server.py');
+        data.blob = { total: 0, groups: [] };
+      } else if (data.blob.error) {
+        toast('线上文件读取失败：' + data.blob.error);
+      }
+      apiMode = 'server';
+      data.error = '';
+      serverData = data;
+      renderFileSelect(autoPick);
+    }).catch(function (err) {
+      return loadStaticIndex(autoPick, err.message);
+    });
+  }
+
+  // 下拉里有三种值：线上前缀 blob:xxx、服务端清单路径、浏览器文件夹里的 local:序号
+  function pickSource(value, label) {
+    var name = String(label || value).split('（')[0].trim();
+    if (value.indexOf('local:') === 0) {
+      var f = localFiles[parseInt(value.slice(6), 10)];
+      if (f) loadLocalFile(f); else toast('文件已失效，请重新选择文件夹');
+      return;
+    }
+    try { localStorage.setItem(SRC_KEY, value); } catch (e) {}
+    if (value.indexOf('blob:') === 0) loadBlob(value.slice(5), name);
+    else loadFromSource(value, name);
+  }
+
+  function loadBlob(prefix, label) {
+    if (apiMode === 'static') {
+      var items = ((staticIndex && staticIndex.files) || []).filter(function (f) {
+        return !prefix || f.path === prefix || f.path.indexOf(prefix + '/') === 0;
+      });
+      var staticRows = uploadsToRows(items, label || '线上文件');
+      if (!staticRows.length) { toast('该前缀下没有可展示的素材'); return; }
+      showRows(staticRows, label || '线上文件');
+      return;
+    }
+    toast('正在读取线上文件列表…');
+    fetch('/api/blob?prefix=' + encodeURIComponent(prefix), { cache: 'no-store' })
+      .then(function (resp) {
+        return resp.json().then(function (j) {
+          if (!resp.ok) throw new Error(j.error || ('HTTP ' + resp.status));
+          return j;
+        });
+      })
+      .then(function (data) {
+        var rows = uploadsToRows(data.items || [], label || '线上文件');
+        if (!rows.length) { toast('该前缀下没有可展示的素材'); return; }
+        showRows(rows, label || '线上文件');
+      })
+      .catch(function (err) { toast('读取线上文件失败：' + err.message); });
+  }
+
+  $('fileSelect').addEventListener('change', function () {
+    if (!this.value) return;
+    var opt = this.options[this.selectedIndex];
+    pickSource(this.value, opt ? opt.textContent : '');
+  });
+  $('refreshBtn').addEventListener('click', function () { loadFileList(false); toast('已刷新文件列表'); });
+
+  /* ======================= 分组 / 筛选 ======================= */
+  function groupValueOf(row, key) {
+    if (key === 'completeness') return row.completeness;
+    if (key === 'batch') return row.batch || '未分批次';
+    return row.cats[key] || '未标注';
+  }
+  function groupValue(row) { return groupValueOf(row, state.groupBy); }
+
+  // 只保留真正能分出多类的维度：线上文件没有 prompt，类别/镜头/颜色全是「未标注」，
+  // 留着只会给出一个空壳分类
+  function activeGroupDefs() {
+    var defs = ALL_GROUP_DEFS.filter(function (d) {
+      var seen = {}, n = 0;
+      for (var i = 0; i < state.rows.length; i++) {
+        var v = groupValueOf(state.rows[i], d.key);
+        if (!seen[v]) { seen[v] = 1; if (++n > 1) return true; }
+      }
+      return false;
+    });
+    return defs.length ? defs : [ALL_GROUP_DEFS[0]];
+  }
+
+  // 分组计数只受「仅看 + 搜索」影响，不受当前选中分组影响，否则侧栏切一次就只剩一项
+  function rowsBeforeGroup() {
+    return state.rows.filter(function (r) {
+      if (state.search && r.searchText.indexOf(state.search) === -1) return false;
+      // 图墙模式下没有该素材的条目直接不参与，分页和侧栏计数才不会出现空位
+      if (state.view === 'grid' && !r.media[state.gridCol]) return false;
+      switch (state.only) {
+        case 'has_target':  return r.has.target_video;
+        case 'no_target':   return !r.has.target_video;
+        case 'has_ref':     return r.has.reference_image;
+        case 'no_ref':      return !r.has.reference_image;
+        case 'complete':    return !r.missing;
+        case 'incomplete':  return r.missing;
+        default: return true;
+      }
+    });
+  }
+
+  function visibleRows() {
+    var base = rowsBeforeGroup();
+    if (state.activeGroup) {
+      base = base.filter(function (r) { return groupValue(r) === state.activeGroup; });
+    }
+    var out = base.slice();
+    if (state.sort !== 'origin') {
+      var dir = state.sort === 'index_desc' ? -1 : 1;
+      out.sort(function (a, b) {
+        var na = parseFloat(a.index), nb = parseFloat(b.index);
+        if (!isNaN(na) && !isNaN(nb) && na !== nb) return (na - nb) * dir;
+        return String(a.index).localeCompare(String(b.index), 'zh') * dir;
+      });
+    }
+    return out;
+  }
+
+  /* ======================= 渲染 ======================= */
+  function renderAll() {
+    renderGroupSelect();
+    renderSidebar();
+    renderStats();
+    renderList();
+  }
+
+  function renderGroupSelect() {
+    var defs = activeGroupDefs();
+    var keys = defs.map(function (d) { return d.key; }).join(',');
+    var sel = $('groupSelect');
+    if (sel.dataset.keys !== keys) {
+      sel.dataset.keys = keys;
+      sel.innerHTML = defs.map(function (g) {
+        return '<option value="' + g.key + '">' + esc(g.label) + '</option>';
+      }).join('');
+    }
+    if (defs.every(function (d) { return d.key !== state.groupBy; })) {
+      state.groupBy = defs[0].key;
+    }
+    sel.value = state.groupBy;
+  }
+
+  function renderSidebar() {
+    var base = rowsBeforeGroup();
+    var counts = {};
+    base.forEach(function (r) {
+      var v = groupValue(r);
+      counts[v] = (counts[v] || 0) + 1;
+    });
+    var entries = Object.keys(counts).map(function (k) { return { name: k, n: counts[k] }; });
+    entries.sort(function (a, b) { return b.n - a.n || a.name.localeCompare(b.name, 'zh'); });
+
+    state.groupCount = entries.length;
+    $('groupCount').textContent = entries.length + ' 类';
+    var list = $('sbList');
+    list.innerHTML = '';
+
+    var all = document.createElement('div');
+    all.className = 'sb-item' + (state.activeGroup ? '' : ' on');
+    all.innerHTML = '<span class="nm">全部</span><span class="ct">' + base.length + '</span>';
+    all.addEventListener('click', function () { state.activeGroup = ''; state.page = 1; renderAll(); });
+    list.appendChild(all);
+
+    entries.forEach(function (e) {
+      var it = document.createElement('div');
+      it.className = 'sb-item' + (state.activeGroup === e.name ? ' on' : '');
+      it.innerHTML = '<span class="nm" title="' + esc(e.name) + '">' + esc(e.name) + '</span>' +
+                     '<span class="ct">' + e.n + '</span>';
+      it.addEventListener('click', function () {
+        state.activeGroup = (state.activeGroup === e.name) ? '' : e.name;
+        state.page = 1; renderAll();
+      });
+      list.appendChild(it);
+    });
+  }
+
+  function renderStats() {
+    var shown = visibleRows();
+    $('stFiltered').textContent = shown.length;
+    $('stTotal').textContent = state.rows.length;
+    $('stGroups').textContent = state.groupCount;
+    $('stMissing').textContent = state.rows.filter(function (r) { return r.missing; }).length;
+
+    var c = { reference_image: 0, source_video: 0, target_video: 0 };
+    state.rows.forEach(function (r) {
+      MEDIA_DEFS.forEach(function (d) { if (r.media[d.col]) c[d.col]++; });
+    });
+    $('cntRef').textContent = c.reference_image;
+    $('cntSource').textContent = c.source_video;
+    $('cntTarget').textContent = c.target_video;
+  }
+
+  function renderList() {
+    var shown = visibleRows();
+    var size = state.pageSize;
+    var pages = Math.max(1, Math.ceil(shown.length / size));
+    if (state.page > pages) state.page = pages;
+    var start = (state.page - 1) * size;
+    var pageRows = shown.slice(start, start + size);
+
+    $('resultNote').textContent = shown.length
+      ? '筛选结果 ' + shown.length + ' 条 · 第 ' + state.page + ' / ' + pages + ' 页'
+      : '';
+    $('emptyResult').classList.toggle('hidden', shown.length > 0);
+
+    var cards = $('cards');
+    cards.innerHTML = '';
+    cards.className = state.view === 'grid' ? 'grid' : '';
+    var build = state.view === 'grid' ? buildGridItem : buildCard;
+    pageRows.forEach(function (row, k) { cards.appendChild(build(row, start + k)); });
+    renderPager(pages);
+    allPlaying = false;
+    $('playAllBtn').textContent = '▶ 本页同时播放';
+  }
+
+  function renderPager(pages) {
+    var p = $('pager');
+    p.innerHTML = '';
+    if (pages <= 1) return;
+
+    var add = function (text, page, opts) {
+      opts = opts || {};
+      var b = document.createElement('button');
+      b.className = 'pg' + (opts.on ? ' on' : '');
+      b.textContent = text;
+      if (opts.disabled) b.disabled = true;
+      else b.addEventListener('click', function () {
+        state.page = page; renderList();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+      p.appendChild(b);
+    };
+    var gap = function () {
+      var s = document.createElement('span');
+      s.className = 'pg-gap'; s.textContent = '…'; p.appendChild(s);
+    };
+
+    add('‹ 上一页', state.page - 1, { disabled: state.page <= 1 });
+    var nums = [];
+    for (var i = 1; i <= pages; i++) {
+      if (i === 1 || i === pages || Math.abs(i - state.page) <= 2) nums.push(i);
+    }
+    var prev = 0;
+    nums.forEach(function (n) {
+      if (prev && n - prev > 1) gap();
+      add(String(n), n, { on: n === state.page });
+      prev = n;
+    });
+    add('下一页 ›', state.page + 1, { disabled: state.page >= pages });
+  }
+
+  function openLightbox(src, isVideo) {
+    var img = $('lightboxImg'), vid = $('lightboxVideo');
+    img.classList.toggle('hidden', isVideo);
+    vid.classList.toggle('hidden', !isVideo);
+    if (isVideo) {
+      img.removeAttribute('src');
+      vid.src = src; vid.currentTime = 0; vid.play().catch(function () {});
+    } else {
+      vid.pause(); vid.removeAttribute('src');
+      img.src = src;
+    }
+    $('lightbox').classList.add('show');
+  }
+
+  function closeLightbox() {
+    var vid = $('lightboxVideo');
+    vid.pause(); vid.removeAttribute('src');
+    $('lightbox').classList.remove('show');
+  }
+
+  /* URL 以图片扩展名结尾时按图片渲染（清单里 source/target 列也可以放图片） */
+  function isImageUrl(u) {
+    return /\.(png|jpe?g|webp|gif|bmp)([?#]|$)/i.test(String(u || '').split('?')[0]);
+  }
+  function mediaType(def, src) {
+    if (src && isImageUrl(src)) return 'image';
+    return def.type;
+  }
+  function defOf(col) {
+    return MEDIA_DEFS.filter(function (d) { return d.col === col; })[0];
+  }
+  function fmtTime(t) {
+    if (!isFinite(t) || t < 0) t = 0;
+    var s = Math.floor(t % 60);
+    return Math.floor(t / 60) + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  // 单张卡片可以临时切回并排；全局切换时这个临时状态会被清掉
+  function cmpModeOf(row) { return row._cmp || state.cmp; }
+  function wipeReady(row) {
+    return !!row.media.source_video && !!row.media.target_video &&
+           state.media.source_video && state.media.target_video &&
+           (!row.expected || (row.expected.source_video && row.expected.target_video));
+  }
+
+  /* ---------- 左右滑动对比 ----------
+     原视频铺在上层、按分割线裁掉右半边，目标视频在下层从右边露出来，
+     两路共用一套播放控制。播放中按主时钟纠偏，否则两个视频会越播越错位。  */
+  function buildWipe(row, sDef, tDef, videos) {
+    var sSrc = row.media[sDef.col], tSrc = row.media[tDef.col];
+    var wrap = document.createElement('div');
+    wrap.className = 'wipe';
+    wrap.innerHTML =
+      '<div class="wipe-head">' +
+        '<span class="tag ' + sDef.tagClass + '">' + sDef.label + '</span>' +
+        '<span class="fname" title="' + esc(fileName(sSrc)) + '">' + esc(fileName(sSrc)) + '</span>' +
+        '<span class="swap">⇄</span>' +
+        '<span class="tag ' + tDef.tagClass + '">' + tDef.label + '</span>' +
+        '<span class="fname" title="' + esc(fileName(tSrc)) + '">' + esc(fileName(tSrc)) + '</span>' +
+      '</div>';
+
+    var stage = document.createElement('div');
+    stage.className = 'wipe-stage';
+    stage.tabIndex = 0;
+    var vids = [];
+
+    function makeLayer(def, src) {
+      var box = document.createElement('div');
+      box.className = 'wipe-layer';
+      var el;
+      if (mediaType(def, src) === 'video') {
+        el = document.createElement('video');
+        el.src = src; el.preload = 'metadata';
+        el.muted = true; el.playsInline = true;
+        vids.push(el); videos.push(el);
+      } else {
+        el = document.createElement('img');
+        el.src = src; el.alt = def.label; el.loading = 'lazy';
+      }
+      el.addEventListener('error', function () {
+        box.innerHTML = '<div class="broken">' + def.label +
+                        '加载失败<br>确认链接可访问（需内网环境）</div>';
+      });
+      box.appendChild(el);
+      return box;
+    }
+
+    var sLayer = makeLayer(sDef, sSrc);      // 左侧
+    var tLayer = makeLayer(tDef, tSrc);      // 右侧
+    var topLayer = sLayer;
+    stage.appendChild(tLayer);
+    stage.appendChild(sLayer);
+    sLayer.classList.add('top');
+
+    var handle = document.createElement('div');
+    handle.className = 'wipe-handle';
+    handle.innerHTML = '<div class="wipe-knob">⇄</div>';
+    stage.appendChild(handle);
+    var badgeL = document.createElement('span');
+    badgeL.className = 'wipe-badge l'; badgeL.textContent = sDef.label;
+    var badgeR = document.createElement('span');
+    badgeR.className = 'wipe-badge r'; badgeR.textContent = tDef.label;
+    var tip = document.createElement('span');
+    tip.className = 'wipe-tip'; tip.textContent = '拖动分割线对比 · 双击复位';
+    stage.appendChild(badgeL); stage.appendChild(badgeR); stage.appendChild(tip);
+    wrap.appendChild(stage);
+
+    // 画框跟随素材比例：竖图塞进 16/9 会两边留大片黑边，人脸小得没法看
+    var baseEl = tLayer.querySelector('img, video');
+    if (baseEl) {
+      var fitStage = function () {
+        var w = baseEl.naturalWidth || baseEl.videoWidth || 0;
+        var h = baseEl.naturalHeight || baseEl.videoHeight || 0;
+        if (w && h) stage.style.aspectRatio = w + ' / ' + h;
+      };
+      baseEl.addEventListener('load', fitStage);
+      baseEl.addEventListener('loadedmetadata', fitStage);
+    }
+
+    var pos = state.wipePos;
+    function setPos(p) {
+      pos = Math.max(0, Math.min(100, p));
+      state.wipePos = pos;
+      topLayer.style.clipPath = 'inset(0 ' + (100 - pos) + '% 0 0)';
+      handle.style.left = pos + '%';
+    }
+    setPos(pos);
+
+    var dragging = false;
+    function posOf(e) {
+      var r = stage.getBoundingClientRect();
+      return r.width ? ((e.clientX - r.left) / r.width) * 100 : 50;
+    }
+    stage.addEventListener('pointerdown', function (e) {
+      dragging = true;
+      stage.classList.add('touched');
+      try { stage.setPointerCapture(e.pointerId); } catch (err) {}
+      setPos(posOf(e));
+      e.preventDefault();
+    });
+    stage.addEventListener('pointermove', function (e) { if (dragging) setPos(posOf(e)); });
+    ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(function (ev) {
+      stage.addEventListener(ev, function () { dragging = false; });
+    });
+    stage.addEventListener('dblclick', function () { setPos(50); });
+    stage.addEventListener('keydown', function (e) {
+      var step = e.shiftKey ? 10 : 2;
+      if (e.key === 'ArrowLeft')  { setPos(pos - step); e.preventDefault(); }
+      else if (e.key === 'ArrowRight') { setPos(pos + step); e.preventDefault(); }
+      else if (e.key === ' ') { toggle(); e.preventDefault(); }
+    });
+
+    /* ---- 控制条：上一行是播放进度，下一行是开关和链接 ---- */
+    var bar = document.createElement('div');
+    bar.className = 'wipe-ctrl';
+    var ctrl = document.createElement('div');
+    ctrl.className = 'wipe-ctrl';
+    wrap.appendChild(ctrl);
+    function mk(text, title) {
+      var b = document.createElement('button');
+      b.className = 'mini-btn'; b.textContent = text;
+      if (title) b.title = title;
+      ctrl.appendChild(b);
+      return b;
+    }
+
+    var master = vids[0] || null;
+    var playBtn = null, seek = null, timeLab = null, warnEl = null;
+    var raf = 0, sweeping = false, sweepT0 = 0, looping = false;
+
+    function anyPlaying() {
+      return vids.some(function (v) { return !v.paused && !v.ended; });
+    }
+    function durOf() {
+      return vids.reduce(function (m, v) {
+        return isFinite(v.duration) ? Math.max(m, v.duration) : m;
+      }, 0);
+    }
+    function updateHud() {
+      if (!timeLab) return;
+      var d = durOf(), t = master ? master.currentTime : 0;
+      timeLab.textContent = fmtTime(t) + ' / ' + fmtTime(d);
+      if (seek && document.activeElement !== seek) {
+        seek.value = d ? String(Math.round(t / d * 1000)) : '0';
+      }
+    }
+    function syncBtnState() {
+      if (playBtn) playBtn.textContent = anyPlaying() ? '‖ 暂停' : '▶ 播放';
+    }
+    // 时长对不上时对比意义有限，直接标出来，省得看着以为是模型丢帧
+    function checkDur() {
+      if (warnEl || vids.length < 2) return;
+      var a = vids[0].duration, b = vids[1].duration;
+      if (!isFinite(a) || !isFinite(b) || Math.abs(a - b) < 0.25) return;
+      warnEl = document.createElement('span');
+      warnEl.className = 'wipe-warn';
+      warnEl.textContent = '⚠ 时长不一致 原 ' + a.toFixed(1) + 's · 目标 ' + b.toFixed(1) + 's';
+      ctrl.appendChild(warnEl);
+    }
+
+    function tick() {
+      raf = 0;
+      if (!stage.isConnected) return;          // 卡片被重渲染后停掉，别空转
+      if (sweeping) {
+        setPos(50 + 42 * Math.sin((Date.now() - sweepT0) / 2600 * Math.PI * 2));
+      }
+      if (anyPlaying()) {
+        var t = master ? master.currentTime : 0;
+        vids.forEach(function (v) {
+          if (v === master || v.paused) return;
+          if (isFinite(v.duration) && t > v.duration) return;
+          if (Math.abs(v.currentTime - t) > 0.12) v.currentTime = t;
+        });
+        updateHud();
+      }
+      if (sweeping || anyPlaying()) raf = requestAnimationFrame(tick);
+    }
+    function kick() { if (!raf) raf = requestAnimationFrame(tick); }
+
+    function playAll() {
+      vids.forEach(function (v) {
+        if (v.ended) v.currentTime = 0;
+        v.play().catch(function () {});
+      });
+      kick();
+    }
+    function pauseAll() { vids.forEach(function (v) { v.pause(); }); }
+    function seekAll(t) {
+      vids.forEach(function (v) {
+        v.currentTime = isFinite(v.duration) ? Math.min(t, Math.max(0, v.duration - 0.02)) : t;
+      });
+      updateHud();
+    }
+    function toggle() {
+      if (!vids.length) return;
+      if (anyPlaying()) pauseAll(); else playAll();
+    }
+
+    vids.forEach(function (v) {
+      v.addEventListener('loadedmetadata', function () {
+        // 主时钟取更长的那路，进度条才能覆盖完整区间
+        if (!master || !isFinite(master.duration) ||
+            (isFinite(v.duration) && v.duration > master.duration)) master = v;
+        checkDur(); updateHud();
+      });
+      v.addEventListener('play', function () { kick(); syncBtnState(); });
+      v.addEventListener('pause', syncBtnState);
+      v.addEventListener('ended', function () {
+        var allDone = vids.every(function (x) { return x.ended || x.paused; });
+        if (allDone && looping) { seekAll(0); playAll(); }
+        else syncBtnState();
+      });
+    });
+
+    if (vids.length) {
+      wrap.insertBefore(bar, ctrl);
+
+      playBtn = document.createElement('button');
+      playBtn.className = 'mini-btn';
+      playBtn.textContent = '▶ 播放';
+      playBtn.addEventListener('click', toggle);
+      bar.appendChild(playBtn);
+
+      seek = document.createElement('input');
+      seek.type = 'range'; seek.min = '0'; seek.max = '1000'; seek.value = '0';
+      seek.className = 'wipe-seek';
+      seek.addEventListener('input', function () {
+        var d = durOf();
+        if (d) seekAll(d * (parseInt(this.value, 10) / 1000));
+      });
+      bar.appendChild(seek);
+
+      timeLab = document.createElement('span');
+      timeLab.className = 'wipe-time';
+      timeLab.textContent = '0:00 / 0:00';
+      bar.appendChild(timeLab);
+
+      var speedSel = document.createElement('select');
+      speedSel.className = 'mini';
+      speedSel.style.padding = '3px 7px';
+      speedSel.innerHTML = '<option value="0.25">0.25x</option><option value="0.5">0.5x</option>' +
+                           '<option value="1" selected>1x</option>' +
+                           '<option value="1.5">1.5x</option><option value="2">2x</option>';
+      speedSel.addEventListener('change', function () {
+        var r = parseFloat(this.value);
+        vids.forEach(function (v) { v.playbackRate = r; });
+      });
+      bar.appendChild(speedSel);
+
+      var loopBtn = mk('↻ 循环');
+      loopBtn.addEventListener('click', function () {
+        looping = !looping;
+        loopBtn.classList.toggle('act', looping);
+      });
+
+      // 两路同时出声没法听，开声音时只放目标视频那一路
+      var soundOn = false;
+      var loud = vids[vids.length - 1];
+      var soundBtn = mk('🔇 静音', '只放目标视频的声音');
+      soundBtn.addEventListener('click', function () {
+        soundOn = !soundOn;
+        vids.forEach(function (v) { v.muted = !(soundOn && v === loud); });
+        soundBtn.textContent = soundOn ? '🔊 目标声音' : '🔇 静音';
+        soundBtn.classList.toggle('act', soundOn);
+      });
+    }
+
+    var swapBtn = mk('⇆ 交换左右', '把目标视频换到左边');
+    var swapped = false;
+    swapBtn.addEventListener('click', function () {
+      swapped = !swapped;
+      var lower = swapped ? sLayer : tLayer;
+      topLayer = swapped ? tLayer : sLayer;
+      lower.classList.remove('top');
+      lower.style.clipPath = 'none';
+      topLayer.classList.add('top');
+      stage.insertBefore(lower, stage.firstChild);
+      badgeL.textContent = swapped ? tDef.label : sDef.label;
+      badgeR.textContent = swapped ? sDef.label : tDef.label;
+      swapBtn.classList.toggle('act', swapped);
+      setPos(pos);
+    });
+
+    var sweepBtn = mk('⇋ 自动扫描', '分割线自动来回移动');
+    sweepBtn.addEventListener('click', function () {
+      sweeping = !sweeping;
+      sweepBtn.classList.toggle('act', sweeping);
+      stage.classList.add('touched');
+      if (sweeping) { sweepT0 = Date.now(); kick(); }
+    });
+
+    var fsBtn = mk('⛶ 全屏');
+    fsBtn.addEventListener('click', function () {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (wrap.requestFullscreen) wrap.requestFullscreen().catch(function () {});
+      else toast('当前浏览器不支持全屏');
+    });
+
+    var openBtn = mk('新窗口打开');
+    openBtn.addEventListener('click', function () {
+      window.open(swapped ? sSrc : tSrc, '_blank');
+    });
+    var copyBtn = mk('复制链接');
+    copyBtn.addEventListener('click', function () { copyText(sSrc + '\n' + tSrc, copyBtn); });
+
+    updateHud();
+    return wrap;
+  }
+
+  /* 图墙：一行只放一种素材，视频用 #t=0.5 定格当缩略图，鼠标移上去才播 */
+  function buildGridItem(row, globalIdx) {
+    var def = MEDIA_DEFS.filter(function (d) { return d.col === state.gridCol; })[0] || MEDIA_DEFS[1];
+    var src = row.media[def.col];
+    var name = fileName(src);
+
+    var it = document.createElement('div');
+    it.className = 'gitem';
+
+    if (mediaType(def, src) === 'video') {
+      var v = document.createElement('video');
+      v.className = 'gthumb';
+      v.src = src + (src.indexOf('#') === -1 ? '#t=0.5' : '');
+      v.preload = 'metadata';
+      v.muted = true; v.loop = true; v.playsInline = true;
+      v.addEventListener('mouseenter', function () { v.play().catch(function () {}); });
+      v.addEventListener('mouseleave', function () { v.pause(); v.currentTime = 0.5; });
+      v.addEventListener('click', function () { v.pause(); openLightbox(src, true); });
+      v.addEventListener('error', function () {
+        var d = document.createElement('div');
+        d.className = 'gbroken'; d.textContent = '加载失败';
+        if (v.parentNode) v.parentNode.replaceChild(d, v);
+      });
+      it.appendChild(v);
+    } else {
+      var im = document.createElement('img');
+      im.className = 'gthumb';
+      im.src = src; im.alt = def.label; im.loading = 'lazy';
+      im.addEventListener('click', function () { openLightbox(src, false); });
+      im.addEventListener('error', function () {
+        var d = document.createElement('div');
+        d.className = 'gbroken'; d.textContent = '加载失败';
+        if (im.parentNode) im.parentNode.replaceChild(d, im);
+      });
+      it.appendChild(im);
+    }
+
+    var cap = document.createElement('div');
+    cap.className = 'gcap';
+    var tags = '';
+    if (row.cats.shot !== '未标注镜头') tags = '<span class="meta-tag">' + esc(row.cats.shot) + '</span>';
+    cap.innerHTML = '<div class="gtop"><span class="gidx">#' + (globalIdx + 1) + '</span>' +
+                    '<span class="gnum">' + esc(row.index) + '</span>' + tags + '</div>' +
+                    '<div class="gname" title="' + esc(name) + '">' + esc(name) + '</div>';
+    it.appendChild(cap);
+    return it;
+  }
+
+  function buildCard(row, globalIdx) {
+    var card = document.createElement('div');
+    card.className = 'card';
+
+    /* 头部 */
+    var head = document.createElement('div');
+    head.className = 'card-head';
+    var metas = ['<span class="index-badge">#' + (globalIdx + 1) + '</span>',
+                 '<span class="card-title">' + esc(row.index) + '</span>'];
+    if (row.cats.category !== '未标注类别') metas.push('<span class="meta-tag">' + esc(row.cats.category) + '</span>');
+    if (row.cats.shot !== '未标注镜头') metas.push('<span class="meta-tag">' + esc(row.cats.shot) + '</span>');
+    if (row.bytes) metas.push('<span class="meta-tag">' + humanSize(row.bytes) + '</span>');
+    if (row.missing) metas.push('<span class="meta-tag miss">' + esc(row.completeness) + '</span>');
+    head.innerHTML = metas.join('') + '<span class="spacer"></span>';
+
+    var useWipe = wipeReady(row) && cmpModeOf(row) === 'wipe';
+    if (wipeReady(row)) {
+      var modeBtn = document.createElement('button');
+      modeBtn.className = 'mini-btn';
+      modeBtn.textContent = useWipe ? '▥ 并排显示' : '⇄ 滑动对比';
+      modeBtn.addEventListener('click', function () {
+        row._cmp = useWipe ? 'side' : 'wipe';
+        var fresh = buildCard(row, globalIdx);
+        if (card.parentNode) card.parentNode.replaceChild(fresh, card);
+      });
+      head.appendChild(modeBtn);
+    }
+
+    // 滑动对比自带播放控制，就不再挂一个同步播放按钮
+    var syncBtn = null;
+    if (!useWipe) {
+      syncBtn = document.createElement('button');
+      syncBtn.className = 'btn btn-ghost';
+      syncBtn.style.padding = '6px 13px';
+      syncBtn.style.fontSize = '12px';
+      syncBtn.textContent = '⇉ 同步播放对比';
+      head.appendChild(syncBtn);
+    }
+    card.appendChild(head);
+
+    /* 媒体：expect 里没声明的素材位不占版面，免得纯视频批次挂一个空的参考图框 */
+    var active = MEDIA_DEFS.filter(function (d) {
+      // 滑动对比里原视频和目标视频已经叠在一块了，这里只留参考图
+      if (useWipe && d.col !== 'reference_image') return false;
+      return state.media[d.col] && (!row.expected || row.expected[d.col]);
+    });
+    var cols = active.map(function (d) { return d.type === 'image' ? '1fr' : '1.4fr'; });
+    if (useWipe) cols.push('2.8fr');
+    var grid = document.createElement('div');
+    grid.className = 'media-grid';
+    grid.style.gridTemplateColumns = window.innerWidth < 980 ? '1fr' : (cols.join(' ') || '1fr');
+
+    var videos = [];
+    active.forEach(function (def) {
+      var src = row.media[def.col];
+      var box = document.createElement('div');
+      box.className = 'media-box' + (useWipe ? ' stretch' : '');
+      box.innerHTML = '<div class="media-label"><span class="tag ' + def.tagClass + '">' + def.label + '</span>' +
+                      '<span class="fname" title="' + esc(fileName(src)) + '">' + esc(fileName(src)) + '</span></div>';
+
+      var frame = document.createElement('div');
+      frame.className = 'media-frame';
+      if (!src) {
+        frame.innerHTML = '<div class="broken">暂无' + def.label + '<br>清单中该列为空</div>';
+      } else if (mediaType(def, src) === 'video') {
+        var v = document.createElement('video');
+        v.src = src; v.controls = true; v.preload = 'metadata';
+        v.addEventListener('error', function () {
+          frame.innerHTML = '<div class="broken">视频加载失败<br>确认链接可访问（需内网环境）</div>';
+        });
+        frame.appendChild(v);
+        videos.push(v);
+      } else {
+        var img = document.createElement('img');
+        img.src = src; img.alt = def.label; img.loading = 'lazy';
+        img.addEventListener('error', function () {
+          frame.innerHTML = '<div class="broken">图片加载失败<br>确认链接可访问（需内网环境）</div>';
+        });
+        img.addEventListener('click', function () { openLightbox(src, false); });
+        frame.appendChild(img);
+      }
+      box.appendChild(frame);
+
+      if (src) {
+        var actions = document.createElement('div');
+        actions.className = 'media-actions';
+        var copyBtn = document.createElement('button');
+        copyBtn.className = 'mini-btn'; copyBtn.textContent = '复制链接';
+        copyBtn.addEventListener('click', function () { copyText(src, copyBtn); });
+        var openBtn = document.createElement('button');
+        openBtn.className = 'mini-btn'; openBtn.textContent = '新窗口打开';
+        openBtn.addEventListener('click', function () { window.open(src, '_blank'); });
+        actions.appendChild(copyBtn); actions.appendChild(openBtn);
+        box.appendChild(actions);
+      }
+      grid.appendChild(box);
+    });
+    if (useWipe) {
+      grid.appendChild(buildWipe(row, defOf('source_video'), defOf('target_video'), videos));
+    } else if (!active.length) {
+      grid.innerHTML = '<div class="broken" style="padding:20px;color:var(--ink-3);font-size:12.5px">' +
+                       '上方「显示」里三个标签都关掉了，至少留一个</div>';
+    }
+    card.appendChild(grid);
+
+    /* 同步播放 */
+    if (syncBtn) {
+      var playing = false;
+      syncBtn.addEventListener('click', function () {
+        if (!videos.length) { toast('该条目没有可播放的视频'); return; }
+        playing = !playing;
+        if (playing) {
+          videos.forEach(function (v) { v.currentTime = 0; v.play().catch(function () {}); });
+          syncBtn.textContent = '‖ 暂停对比';
+        } else {
+          videos.forEach(function (v) { v.pause(); });
+          syncBtn.textContent = '⇉ 同步播放对比';
+        }
+      });
+      videos.forEach(function (v) {
+        v.addEventListener('ended', function () {
+          if (videos.every(function (x) { return x.ended || x.paused; })) {
+            playing = false; syncBtn.textContent = '⇉ 同步播放对比';
+          }
+        });
+      });
+    }
+
+    /* prompts */
+    var area = document.createElement('div');
+    area.className = 'prompt-area';
+    var hasPrompt = false;
+    PROMPT_DEFS.forEach(function (def) {
+      var text = row.prompts[def.col];
+      if (!text) return;
+      hasPrompt = true;
+      var block = document.createElement('div');
+      block.className = 'prompt-block';
+      block.innerHTML = '<div class="p-head"><span class="p-title">' + esc(def.label) +
+                        '</span><span class="caret">▼</span></div>' +
+                        '<div class="p-body">' + esc(text) + '</div>';
+      block.querySelector('.p-head').addEventListener('click', function () { block.classList.toggle('open'); });
+      area.appendChild(block);
+    });
+    if (hasPrompt) card.appendChild(area);
+
+    return card;
+  }
+
+  function copyText(text, btn) {
+    var done = function () {
+      btn.classList.add('ok'); btn.textContent = '已复制';
+      setTimeout(function () { btn.classList.remove('ok'); btn.textContent = '复制链接'; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+    } else { fallbackCopy(text); done(); }
+  }
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  /* ======================= 交互绑定 ======================= */
+  function applyView() {
+    var grid = state.view === 'grid';
+    Array.prototype.forEach.call(document.querySelectorAll('.pill[data-view]'), function (p) {
+      var on = p.dataset.view === state.view;
+      p.classList.toggle('on', on);
+      p.classList.toggle('off', !on);
+    });
+    $('mediaGroup').classList.toggle('hidden', grid);
+    $('cmpGroup').classList.toggle('hidden', grid);
+    $('gridColGroup').classList.toggle('hidden', !grid);
+    // 图墙一屏能放很多，默认换个大页长；切回卡片再收回来
+    var ps = $('pageSizeSelect');
+    ps.value = grid ? '60' : '10';
+    state.pageSize = parseInt(ps.value, 10);
+    state.activeGroup = '';
+    state.page = 1;
+    renderAll();
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.pill[data-view]'), function (pill) {
+    pill.addEventListener('click', function () {
+      if (state.view === pill.dataset.view) return;
+      state.view = pill.dataset.view;
+      applyView();
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('.pill[data-cmp]'), function (pill) {
+    pill.addEventListener('click', function () {
+      if (state.cmp === pill.dataset.cmp) return;
+      state.cmp = pill.dataset.cmp;
+      // 单卡片上的临时切换跟着全局一起重置，免得看起来像没生效
+      state.rows.forEach(function (r) { delete r._cmp; });
+      Array.prototype.forEach.call(document.querySelectorAll('.pill[data-cmp]'), function (p) {
+        var on = p.dataset.cmp === state.cmp;
+        p.classList.toggle('on', on);
+        p.classList.toggle('off', !on);
+      });
+      renderList();
+    });
+  });
+  $('gridColSelect').addEventListener('change', function () {
+    state.gridCol = this.value; state.activeGroup = ''; state.page = 1; renderAll();
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('.pill[data-media]'), function (pill) {
+    pill.addEventListener('click', function () {
+      var col = pill.dataset.media;
+      state.media[col] = !state.media[col];
+      pill.classList.toggle('on', state.media[col]);
+      pill.classList.toggle('off', !state.media[col]);
+      renderList();
+    });
+  });
+  $('groupSelect').addEventListener('change', function () {
+    state.groupBy = this.value; state.activeGroup = ''; state.page = 1; renderAll();
+  });
+  $('onlySelect').addEventListener('change', function () {
+    state.only = this.value; state.activeGroup = ''; state.page = 1; renderAll();
+  });
+  $('sortSelect').addEventListener('change', function () {
+    state.sort = this.value; state.page = 1; renderList();
+  });
+  $('pageSizeSelect').addEventListener('change', function () {
+    state.pageSize = parseInt(this.value, 10) || 10; state.page = 1; renderList();
+  });
+
+  var searchTimer;
+  $('searchInput').addEventListener('input', function () {
+    var v = this.value.trim().toLowerCase();
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(function () {
+      state.search = v; state.page = 1; renderAll();
+    }, 180);
+  });
+
+  var allPlaying = false;
+  $('playAllBtn').addEventListener('click', function () {
+    var videos = $('cards').querySelectorAll('video');
+    if (!videos.length) { toast('当前页没有可播放的视频'); return; }
+    allPlaying = !allPlaying;
+    Array.prototype.forEach.call(videos, function (v) {
+      if (allPlaying) { v.currentTime = 0; v.play().catch(function () {}); } else { v.pause(); }
+    });
+    this.textContent = allPlaying ? '‖ 全部暂停' : '▶ 本页同时播放';
+  });
+
+  /* 选择文件夹：浏览器一次性把整个目录读进来，之后在下拉里切，不用再进文件夹翻 */
+  $('dirBtn').addEventListener('click', function () { $('dirInput').click(); });
+  $('dirInput').addEventListener('change', function (e) {
+    localFiles = Array.prototype.filter.call(e.target.files, function (f) {
+      return /\.(xlsx|xls|csv|json)$/i.test(f.name) && !/^[~.]/.test(f.name);
+    }).sort(function (a, b) {
+      return String(b.webkitRelativePath || b.name)
+        .localeCompare(String(a.webkitRelativePath || a.name), 'zh', { numeric: true });
+    });
+    this.value = '';
+    if (!localFiles.length) { toast('该文件夹里没有 xlsx / csv / json'); return; }
+    toast('已扫到 ' + localFiles.length + ' 个清单文件');
+    renderFileSelect(true);
+  });
+
+  /* 单个文件 / 拖拽 / 链接 */
+  $('pickBtn').addEventListener('click', function () { $('fileInput').click(); });
+  $('dropzone').addEventListener('click', function () { $('fileInput').click(); });
+  $('fileInput').addEventListener('change', function (e) {
+    if (e.target.files.length) loadLocalFile(e.target.files[0]);
+    this.value = '';
+  });
+  ['dragover', 'dragenter'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { e.preventDefault(); $('dropzone').classList.add('dragover'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    document.addEventListener(ev, function (e) { e.preventDefault(); $('dropzone').classList.remove('dragover'); });
+  });
+  document.addEventListener('drop', function (e) {
+    if (e.dataTransfer.files.length) loadLocalFile(e.dataTransfer.files[0]);
+  });
+  $('urlRow').addEventListener('click', function (e) { e.stopPropagation(); });
+  $('urlLoadBtn').addEventListener('click', function () { loadFromSource($('urlInput').value); });
+  $('urlInput').addEventListener('keydown', function (e) { if (e.key === 'Enter') loadFromSource(this.value); });
+  $('urlBtn').addEventListener('click', function () {
+    var u = window.prompt('输入 blob 链接或清单文件路径', $('urlInput').value || '');
+    if (u) loadFromSource(u);
+  });
+
+  $('lightbox').addEventListener('click', function (e) {
+    if (e.target === this) closeLightbox();   // 点空白才关，避免点视频控制条误关
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeLightbox();
+  });
+
+  /* ======================= 启动 ======================= */
+  (function init() {
+    if (SERVED) {
+      $('introHint').innerHTML = '本页由看板服务提供，顶部下拉有两类数据源：' +
+        '<code>☁ 线上已上传</code> 直接列出 auto_upload_to_blob.py 传到 BS3 上的实际文件（无需清单表格）；' +
+        '<code>📄 本地清单</code> 是 upload_content 下的 xlsx / csv。也支持 <code>?src=链接或路径</code> 直接打开';
+    }
+    var param = new URLSearchParams(location.search);
+    var src = param.get('src') || param.get('xlsx');
+    // 先探完接口再取 ?src=，否则还不知道该走 /api/file 还是同源相对路径
+    Promise.resolve(loadFileList(!src)).then(function () {
+      if (apiMode === 'static') {
+        $('introHint').innerHTML = '本页托管在对象存储上，数据来自同目录的 <code>' + INDEX_NAME +
+          '</code>：<code>☁ 线上已上传</code> 是 BS3 上的实际文件，<code>📄 清单</code> 是随之上传的 csv / xlsx。' +
+          '索引由 <code>auto_upload_to_blob.py</code> 每次上传后自动刷新';
+      }
+      if (src) loadFromSource(src);
+    });
+  })();
+})();
+</script>
+</body>
+</html>
