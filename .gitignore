@@ -1,0 +1,33 @@
+# 密钥 / 本地配置（不入库）
+secrets.json
+blob_config.json
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# 运行产物：出图、对齐结果、日志、临时文件
+work/
+logs/
+*_align_out/
+*-qt-round*/
+*_out.jsonl
+*.part
+*.tmp
+*.bak
+*.bak.*
+_kml_screen.png
+_full_screen.png
+.DS_Store
+Thumbs.db
+
+# 批次生成的大文件（交付 CSV / 出图 JSONL 只保留 batches/<id>/ 里明确加入的那几份）
+batches/*/*_final.csv
+batches/*/*.dedup.jsonl
+batches/build_all_report.txt
+
+# 本机工具运行时产物
+local_tools/blob/blob-upload-dashboard/upload_content/
+local_tools/blob/blob-upload-dashboard/*.log
