@@ -1,0 +1,21 @@
+{
+  "id": "style0914",
+  "excel_distribution": "风格种类-提示词总表.xlsx",
+  "root_name": "非写实风格化-4148张",
+  "total_images": 61,
+  "leaf_categories": 1,
+  "image_root": "/mnt/kfs/alice/source/风格/20260904-非写实风格化-4148-qt-2072-s35-2076",
+  "kml_image_root": "/mnt/kfs/alice/source/风格/20260904-非写实风格化-4148-qt-2072-s35-2076",
+  "local_image_root": "source_images/style0914",
+  "delivery_root": "20260904-非写实风格化-4148-qt-2072-s35-2076",
+  "source_dir": "20260904-非写实风格化-4148-qt-2072-s35-2076",
+  "output_rel_prefix": "20260904-非写实风格化-4148-qt-2072-s35-2076-qt-round1",
+  "work_dir": "/mnt/kfs/alice/work/style0914",
+  "jsonl": "batches/style0914/Prompt_with_images.jsonl",
+  "pipeline_csv": "Prompt_with_images_style0914.csv",
+  "delivery_csv": "batches/style0914/style0914_风格_final.csv",
+  "image_quality": "high",
+  "runs": 1,
+  "style_from_to": "二次元平涂 -> 像素",
+  "colormatch": "none (--no-colormatch-tags all)"
+}
