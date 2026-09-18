@@ -1,0 +1,4 @@
+batch: style0914 | 来源: batches/style0911/Prompt_with_images.jsonl 的 run==1 行
+行数: 61 | 图片: 61 | runs: 1 | 标签: 二次元平涂 -> 目标: 像素
+prompt 长度: 878 | image_path 全部存在: True
+quality: high | colormatch: 不追色（交付 --no-colormatch-tags all）
