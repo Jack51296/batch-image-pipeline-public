@@ -1,0 +1,14 @@
+[
+ {
+  "index": "示例组1_真实可打开",
+  "source_video_url": "https://blobstore.example.com/bucket-a/label_data/20260813_suyandanzhuang_src3_tgt/tgt/-%20%E8%A5%BF%E8%A5%BFwo.png?x-bs-client-force=true",
+  "target_video_url": "https://blobstore.example.com/bucket-a/label_data/20260813_suyandanzhuang_src3_tgt/src_colormatched/-%20%E8%A5%BF%E8%A5%BFwo_colormatched.png?x-bs-client-force=true",
+  "prompt_setting": "可选列: 这里可以放该组的说明文字, 会显示在卡片下方"
+ },
+ {
+  "index": "示例组2_占位请替换",
+  "source_video_url": "https://blobstore.example.com/<桶名>/<文件夹>/<左边这栏的图片>.png?x-bs-client-force=true",
+  "target_video_url": "https://blobstore.example.com/<桶名>/<文件夹>/<右边这栏的图片>.png?x-bs-client-force=true",
+  "reference_image_url": "https://blobstore.example.com/<桶名>/<文件夹>/<可选的第三张参考图>.png?x-bs-client-force=true"
+ }
+]
