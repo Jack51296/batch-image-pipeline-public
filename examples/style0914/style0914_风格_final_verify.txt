@@ -1,0 +1,15 @@
+csv  : /mnt/kfs/alice/pipeline/batches/style0914/style0914_风格_final.csv
+行数 : 61
+表头与内置字段一致 : True (未找到模板 /mnt/kfs/alice/work/光影数据交付模板.csv )
+路径检查 : 122 个，缺失 0
+空单元格 : {'output_image_path_1': 61, 'output_image_path_2': 61}
+id 重复 : 0 []
+prompt 为空 : 0
+标签为空 : 0
+三输出/两输出/单输出 : 0 0 61
+原图格式 : {'.png': 15, '.jpg': 46}
+每个标签的 colormatch 用法 :
+     二次元平涂 | plain 61 | colormatched 0 
+UTF-8 BOM : True | CRLF : True
+
+结论 : 通过
