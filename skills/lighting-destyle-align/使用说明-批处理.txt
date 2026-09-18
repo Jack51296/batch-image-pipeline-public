@@ -1,0 +1,43 @@
+图生图对齐批处理
+================
+
+1) pip install -r requirements-batch.txt
+
+2) 对齐（直接指定 CSV）：
+   python align_batch.py --csv "\\10.0.0.12\...\0820\final_fixed.csv"
+   或把 CSV 拖到「双击开始对齐.bat / .command」上
+
+   - 相对路径以 CSV 所在目录为根
+   - 若存在 output_image_path / output_image_path_1 / output_image_path_2，
+     则每一列都分别与同一行 input_image_path 做对齐（一行可产生最多 3 对）
+
+3) 输出 CSV目录/{csv文件名}_align_out\
+   例：final_fixed.csv → final_fixed_align_out\
+   processed\
+     {id}_input_{ok|crop|unaligned}.*
+     {id}_output_{ok|crop|unaligned}.jpg
+   aligned_candidates.csv   ← 对齐原 CSV 表头（多 output 仍多列）
+   align_all_results.csv    ← 同上，含 unaligned
+   align_pair_details.csv   ← 扁平等对明细（一行一对）
+   review/index.html        ← 可视化审核（分页）
+
+4) 导出质量：
+   - input：ok/unaligned 原样复制源文件；crop 时 JPG 源→最高质量 JPG，PNG 源→PNG
+   - output：始终写压缩 JPG；ok 预算 40%（较原 80% 再压一倍）；crop/unaligned 仍 80%
+     预算 = min(同尺寸 input→JPEG(q92)×ratio, input 原文件×ratio)
+
+5) 审核后：
+   下载 decisions.json 到输出目录（如 final_fixed_align_out\）
+   python align_batch.py --finalize --out "...\final_fixed_align_out"
+   → aligned_for_label.csv（最终可用，相对路径，供送标）
+
+6) 像素风规则（放大插值）：
+   - 标签（标签/tag/light_type/prompt_target/style 等列）含 像素/pixel/8bit/16bit/点阵，
+     或 prompt 含 像素画/像素风/pixel art/8-bit/16-bit/点阵 → 该对放大 AI 图用最近邻，
+     保住像素块硬边；其它风格不命中，仍用双线性，导出与旧版一致
+   - 只在放大时切换；AI 图比原图大（需缩小）时仍双线性；ok/crop/unaligned 判定不变
+   - 关键词在 defaults.json 的 pixel_style 段改；临时覆盖：
+       --pixel-mode auto|on|off   （默认 auto）
+       --pixel-tags 像素,pixel
+   - 查结果：align_pair_details.csv 的 upscale_interp（nearest/linear）与 pixel_style_hit 列；
+     控制台会打印「像素风命中 N/M 对」
