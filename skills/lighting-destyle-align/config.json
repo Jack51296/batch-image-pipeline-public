@@ -1,0 +1,17 @@
+{
+  "name": "去风格化像素对齐",
+  "icon": "🎯",
+  "desc": "CSV 对齐原图与 AI 结果。浏览器版适合小批量；大批量请用同目录 align_batch.py 并发处理 + review HTML 审核导出。",
+  "tags": [
+    "去风格化",
+    "对齐",
+    "CSV",
+    "相对路径",
+    "美妆",
+    "colormatched"
+  ],
+  "keywords": "去风格化 对齐 CSV 相对路径 美妆 春日妆 round1 colormatched 裁剪 像素",
+  "entry": "index.html",
+  "order": 2,
+  "openMode": "download"
+}
