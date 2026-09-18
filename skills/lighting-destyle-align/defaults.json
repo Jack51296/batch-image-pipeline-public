@@ -1,0 +1,73 @@
+{
+  "_comment": "像素风规则：标签/prompt 命中下列关键词的配对，对齐导出时放大 AI 图改用最近邻(INTER_NEAREST)，保持像素块硬边；未命中的沿用双线性，与旧行为一致。mode: auto=按标签/prompt 自动判断 | on=全部最近邻 | off=关闭。tag_fields 做子串匹配（如 标签=像素）；prompt 只匹配 prompt_keywords 里的强短语，避免“不改变像素尺寸”之类误伤。命令行 --pixel-mode / --pixel-tags 可临时覆盖。",
+  "pixel_style": {
+    "mode": "auto",
+    "tag_fields": [
+      "标签",
+      "tag",
+      "light_type",
+      "prompt_target",
+      "target_style",
+      "style",
+      "aigc生成风格"
+    ],
+    "tag_keywords": [
+      "像素",
+      "pixel",
+      "8bit",
+      "8-bit",
+      "16bit",
+      "16-bit",
+      "点阵"
+    ],
+    "prompt_fields": [
+      "prompt"
+    ],
+    "prompt_keywords": [
+      "像素画",
+      "像素风",
+      "像素艺术",
+      "pixel art",
+      "pixel-art",
+      "pixelart",
+      "8-bit",
+      "16-bit",
+      "点阵"
+    ]
+  },
+  "_comment_lineart": "白描/线稿规则：标签/prompt 命中下列关键词的配对，放大 AI 图改用双三次(INTER_CUBIC)——线条比双线性锐利、又不像最近邻出锯齿；同时特征匹配在灰度与 Sobel 梯度图两路各估一次相似变换取 inliers 多者（线稿与彩色原图在梯度图上同构）。像素规则命中时优先像素规则。命令行 --lineart-mode / --lineart-tags 可临时覆盖。",
+  "lineart_style": {
+    "mode": "auto",
+    "tag_fields": [
+      "标签",
+      "tag",
+      "light_type",
+      "prompt_target",
+      "target_style",
+      "style",
+      "aigc生成风格"
+    ],
+    "tag_keywords": [
+      "白描",
+      "线稿",
+      "线描",
+      "lineart",
+      "line art",
+      "line-art",
+      "勾线",
+      "素描"
+    ],
+    "prompt_fields": [
+      "prompt"
+    ],
+    "prompt_keywords": [
+      "白描",
+      "线稿",
+      "线描",
+      "line art",
+      "lineart",
+      "line-art",
+      "纯线条"
+    ]
+  }
+}
