@@ -1,0 +1,41 @@
+--- batches/style0914:
+config.json
+Prompt_with_images.jsonl
+Prompt_with_images_report.txt
+style0914_风格_final.csv
+style0914_风格_final_report.txt
+style0914_风格_final_verify.txt
+--- logs/style0914:
+align_attempt1_60of61.log
+align.log
+deliver_attempt1_60of61.log
+deliver.log
+final_layout.txt
+gen.log
+out_jsonl_before_retry.jsonl
+pipeline_csv_before_retry.csv
+post_gen_attempt1_60of61.log
+post_gen.log
+post_gen_style0914.sh
+retry_blocked_style0914.py
+retry.log
+setup.log
+setup_style0914.py
+style0914_manifest_batch.txt
+style0914_manifest_work.txt
+--- work/style0914:
+20260904-非写实风格化-4148-qt-2072-s35-2076
+20260904-非写实风格化-4148-qt-2072-s35-2076-qt-round1
+Prompt_with_images_style0914.csv
+Prompt_with_images_style0914_out.jsonl
+style0914_风格_final_align_out
+--- align_out:
+align_all_results.csv
+aligned_candidates.csv
+align_pair_details.csv
+processed
+results.json
+review
+source_meta.json
+outputs: 122 files (plain+colormatched)
+processed: 122 files
