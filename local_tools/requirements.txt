@@ -1,0 +1,14 @@
+# 本机（Windows）侧工具依赖；Python 3.10+
+# kml/*：驱动调试 Chrome 里的 code-server（CDP）、HTTP 拉取开发机文件
+websocket-client
+requests
+pillow
+numpy
+# runbooks/ab_* 与 pixel_rule_regress 的本机测试需要 cv2
+opencv-python-headless
+# prompts/filter_pass.py、legacy/build_jsonl_from_images_v2.py 读 xlsx
+openpyxl
+# blob/*：BlobStore（S3 协议）上传下载
+boto3
+# legacy/gen_image_from_csv.py 进度条
+tqdm
