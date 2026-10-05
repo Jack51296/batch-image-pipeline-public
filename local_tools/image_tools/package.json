@@ -1,0 +1,15 @@
+{
+  "name": "batch-image-pipeline-image-tools-tests",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Browser regression tests; the image tools themselves need no installation.",
+  "scripts": {
+    "test": "node --test tests/browser.test.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

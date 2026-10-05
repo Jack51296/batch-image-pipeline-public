@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>图像比例裁剪</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0d0e11;
+      --panel: rgba(27, 29, 35, .82);
+      --panel-strong: #202228;
+      --line: rgba(255, 255, 255, .09);
+      --muted: #979ca8;
+      --text: #f5f6f8;
+      --accent: #8b7cff;
+      --accent-2: #b5adff;
+      --success: #65d6a7;
+      --danger: #ff8e9b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 12%, rgba(96, 77, 232, .18), transparent 34rem),
+        radial-gradient(circle at 90% 80%, rgba(39, 177, 164, .11), transparent 32rem),
+        var(--bg);
+    }
+
+    button, select, input { font: inherit; }
+
+    .app { width: min(1480px, 100%); margin: 0 auto; padding: 28px; }
+    .tool-nav { display: flex; gap: 20px; margin-bottom: 22px; font-size: 13px; }
+    .tool-nav a { color: var(--accent-2); text-decoration: none; }
+    .tool-nav a:hover { text-decoration: underline; }
+
+    header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    h1 { margin: 0 0 7px; font-size: clamp(26px, 3vw, 40px); letter-spacing: -.04em; }
+    .subtitle { margin: 0; color: var(--muted); font-size: 15px; }
+    .local-tag { color: #c9c5ff; background: rgba(139, 124, 255, .12); border: 1px solid rgba(139, 124, 255, .25); padding: 8px 11px; border-radius: 999px; font-size: 12px; white-space: nowrap; }
+
+    .workspace { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 18px; align-items: start; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 24px 70px rgba(0,0,0,.26); backdrop-filter: blur(16px); }
+    .stage-card { padding: 16px; min-height: 680px; display: flex; }
+
+    .dropzone {
+      position: relative;
+      flex: 1;
+      min-height: 646px;
+      border: 1px dashed rgba(255,255,255,.16);
+      border-radius: 16px;
+      overflow: hidden;
+      display: grid;
+      place-items: center;
+      background-color: #111318;
+      background-image:
+        linear-gradient(45deg, #15171c 25%, transparent 25%),
+        linear-gradient(-45deg, #15171c 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #15171c 75%),
+        linear-gradient(-45deg, transparent 75%, #15171c 75%);
+      background-size: 24px 24px;
+      background-position: 0 0, 0 12px, 12px -12px, -12px 0;
+      transition: border-color .2s, transform .2s;
+    }
+    .dropzone.dragging { border-color: var(--accent-2); transform: scale(.997); }
+    .dropzone.has-image { cursor: grab; border-style: solid; border-color: rgba(255,255,255,.08); }
+    .dropzone.moving { cursor: grabbing; }
+    .empty { text-align: center; max-width: 430px; padding: 40px; }
+    .upload-icon { width: 62px; height: 62px; margin: 0 auto 18px; display: grid; place-items: center; border-radius: 19px; background: linear-gradient(145deg, #8172ff, #5d51c8); box-shadow: 0 14px 36px rgba(100,82,225,.35); font-size: 28px; }
+    .empty h2 { margin: 0 0 9px; font-size: 21px; }
+    .empty p { margin: 0; color: var(--muted); line-height: 1.7; font-size: 14px; }
+    .browse { margin-top: 22px; border: 0; color: white; background: #292c34; padding: 11px 17px; border-radius: 11px; cursor: pointer; }
+
+    #previewCanvas { display: none; max-width: 100%; max-height: 646px; width: auto; height: auto; box-shadow: 0 20px 60px rgba(0,0,0,.34); }
+    .has-image #previewCanvas { display: block; }
+    .has-image .empty { display: none; }
+    .drag-tip { display: none; position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); padding: 7px 11px; border-radius: 999px; background: rgba(10,11,14,.72); color: #d6d8df; font-size: 12px; pointer-events: none; backdrop-filter: blur(10px); }
+    .has-image .drag-tip { display: block; }
+
+    aside { padding: 20px; }
+    .section + .section { border-top: 1px solid var(--line); margin-top: 22px; padding-top: 22px; }
+    .section-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 13px; }
+    .section-title h3 { margin: 0; font-size: 14px; }
+    .auto-badge { color: var(--success); font-size: 11px; opacity: 0; transition: opacity .2s; }
+    .auto-badge.show { opacity: 1; }
+
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .info { background: rgba(255,255,255,.035); border: 1px solid rgba(255,255,255,.055); border-radius: 12px; padding: 11px; }
+    .info span { display: block; color: var(--muted); font-size: 11px; margin-bottom: 5px; }
+    .info strong { display: block; font-size: 14px; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .ratios { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+    .ratio { border: 1px solid transparent; background: rgba(255,255,255,.045); color: #a9adb7; min-height: 42px; border-radius: 10px; cursor: pointer; transition: .15s ease; }
+    .ratio:hover { color: white; background: rgba(255,255,255,.08); }
+    .ratio.active { color: white; background: rgba(139,124,255,.19); border-color: rgba(161,149,255,.62); box-shadow: inset 0 0 0 1px rgba(139,124,255,.12); }
+
+    .result { display: flex; justify-content: space-between; gap: 14px; align-items: center; background: rgba(101,214,167,.07); border: 1px solid rgba(101,214,167,.14); border-radius: 13px; padding: 13px; }
+    .result span { color: var(--muted); font-size: 12px; }
+    .result strong { display: block; margin-top: 4px; font-size: 17px; font-variant-numeric: tabular-nums; }
+    .loss { text-align: right; color: var(--success); font-size: 12px; }
+
+    label.field { display: block; color: var(--muted); font-size: 12px; }
+    select { width: 100%; margin-top: 8px; color: var(--text); background: #252830; border: 1px solid var(--line); border-radius: 10px; padding: 10px 11px; outline: none; }
+    .note { color: var(--muted); font-size: 11px; line-height: 1.6; margin: 10px 0 0; }
+
+    .actions { display: grid; grid-template-columns: 1fr 2fr; gap: 9px; margin-top: 22px; }
+    .action { border: 0; border-radius: 12px; min-height: 45px; color: white; cursor: pointer; transition: transform .15s, opacity .15s; }
+    .action:hover:not(:disabled) { transform: translateY(-1px); }
+    .action:disabled { opacity: .35; cursor: not-allowed; }
+    .secondary { background: #292c34; }
+    .primary { background: linear-gradient(135deg, #8b7cff, #6658de); box-shadow: 0 12px 28px rgba(96,80,214,.28); }
+    #fileInput { display: none; }
+    .error { min-height: 18px; margin: 12px 0 0; color: var(--danger); font-size: 12px; }
+
+    @media (max-width: 920px) {
+      .app { padding: 18px; }
+      header { align-items: start; }
+      .workspace { grid-template-columns: 1fr; }
+      .stage-card { min-height: 480px; }
+      .dropzone { min-height: 446px; }
+      #previewCanvas { max-height: 446px; }
+    }
+    @media (max-width: 520px) {
+      .local-tag { display: none; }
+      .ratios { grid-template-columns: repeat(4, 1fr); }
+      .stage-card { min-height: 380px; }
+      .dropzone { min-height: 346px; }
+      #previewCanvas { max-height: 346px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <nav class="tool-nav" aria-label="图像工具导航"><a href="../index.html">工具首页</a><a href="../size_matcher/index.html">尺寸与文件大小匹配</a></nav>
+    <header>
+      <div>
+        <h1>图像比例裁剪</h1>
+        <p class="subtitle">自动匹配最接近的标准比例，默认只裁剪不缩放；最长边超过 3000 像素时先等比缩小</p>
+      </div>
+      <div class="local-tag">图片仅在本机处理</div>
+    </header>
+
+    <div class="workspace">
+      <section class="card stage-card">
+        <div class="dropzone" id="dropzone">
+          <div class="empty">
+            <div class="upload-icon">↥</div>
+            <h2>拖入一张图片</h2>
+            <p>或从设备中选择 JPG、PNG、WebP 等浏览器支持的图像。处理过程不会上传文件。</p>
+            <button class="browse" id="browseButton">选择图片</button>
+          </div>
+          <canvas id="previewCanvas"></canvas>
+          <div class="drag-tip">拖动图片调整裁剪位置</div>
+        </div>
+      </section>
+
+      <aside class="card">
+        <section class="section">
+          <div class="section-title"><h3>原始图像</h3></div>
+          <div class="info-grid">
+            <div class="info"><span>尺寸</span><strong id="sourceSize">—</strong></div>
+            <div class="info"><span>长宽比</span><strong id="sourceRatio">—</strong></div>
+            <div class="info"><span>文件大小</span><strong id="fileSize">—</strong></div>
+            <div class="info"><span>格式</span><strong id="fileType">—</strong></div>
+          </div>
+          <p class="note" id="scaleNote" hidden></p>
+        </section>
+
+        <section class="section">
+          <div class="section-title">
+            <h3>目标比例</h3>
+            <span class="auto-badge" id="autoBadge">已自动匹配</span>
+          </div>
+          <div class="ratios" id="ratioList"></div>
+        </section>
+
+        <section class="section">
+          <div class="section-title"><h3>输出结果</h3></div>
+          <div class="result">
+            <div><span>裁剪后尺寸</span><strong id="cropSize">—</strong></div>
+            <div class="loss" id="retention">等待图片</div>
+          </div>
+        </section>
+
+        <section class="section">
+          <label class="field">输出格式
+            <select id="formatSelect">
+              <option value="original">保持原格式</option>
+              <option value="image/png">PNG（无损）</option>
+              <option value="image/jpeg">JPEG</option>
+              <option value="image/webp">WebP</option>
+            </select>
+          </label>
+          <p class="note">输出尺寸等于裁剪区域尺寸，不再二次缩放。若原图最长边超过 3000，会先缩小再裁剪。JPEG / WebP 会由浏览器重新编码；如需尽量保留像素值，建议导出 PNG。</p>
+        </section>
+
+        <div class="actions">
+          <button class="action secondary" id="replaceButton" disabled>更换图片</button>
+          <button class="action primary" id="downloadButton" disabled>下载裁剪图</button>
+        </div>
+        <p class="error" id="errorText"></p>
+      </aside>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" />
+  </main>
+
+  <script>
+    const RATIOS = [
+      [1,1], [1,2], [2,1], [9,16], [16,9],
+      [3,4], [4,3], [3,2], [2,3], [5,4],
+      [4,5], [21,9], [9,21]
+    ];
+    const MAX_LONG_EDGE = 3000;
+
+    const $ = (id) => document.getElementById(id);
+    const els = {
+      input: $('fileInput'), dropzone: $('dropzone'), canvas: $('previewCanvas'),
+      browse: $('browseButton'), replace: $('replaceButton'), download: $('downloadButton'),
+      ratios: $('ratioList'), sourceSize: $('sourceSize'), sourceRatio: $('sourceRatio'),
+      fileSize: $('fileSize'), fileType: $('fileType'), cropSize: $('cropSize'),
+      retention: $('retention'), autoBadge: $('autoBadge'), format: $('formatSelect'),
+      error: $('errorText'), scaleNote: $('scaleNote')
+    };
+    const ctx = els.canvas.getContext('2d');
+    const state = {
+      file: null, image: null, ratio: null, crop: null,
+      focusX: .5, focusY: .5, url: null,
+      originalWidth: 0, originalHeight: 0, scaled: false
+    };
+
+    function sourceWidth(image) { return image.naturalWidth || image.width; }
+    function sourceHeight(image) { return image.naturalHeight || image.height; }
+
+    for (const [w, h] of RATIOS) {
+      const button = document.createElement('button');
+      button.className = 'ratio';
+      button.textContent = `${w}:${h}`;
+      button.dataset.w = w;
+      button.dataset.h = h;
+      button.addEventListener('click', () => chooseRatio(w, h, false));
+      els.ratios.appendChild(button);
+    }
+
+    els.browse.addEventListener('click', () => els.input.click());
+    els.replace.addEventListener('click', () => els.input.click());
+    els.input.addEventListener('change', () => els.input.files[0] && loadFile(els.input.files[0]));
+    els.download.addEventListener('click', downloadCrop);
+    window.addEventListener('resize', renderPreview);
+
+    ['dragenter', 'dragover'].forEach(type => els.dropzone.addEventListener(type, (event) => {
+      event.preventDefault();
+      els.dropzone.classList.add('dragging');
+    }));
+    ['dragleave', 'drop'].forEach(type => els.dropzone.addEventListener(type, (event) => {
+      event.preventDefault();
+      els.dropzone.classList.remove('dragging');
+    }));
+    els.dropzone.addEventListener('drop', (event) => {
+      const file = [...event.dataTransfer.files].find(item => item.type.startsWith('image/'));
+      if (file) loadFile(file); else showError('请拖入浏览器支持的图像文件。');
+    });
+
+    let pointer = null;
+    els.canvas.addEventListener('pointerdown', (event) => {
+      if (!state.crop) return;
+      pointer = { x: event.clientX, y: event.clientY, focusX: state.focusX, focusY: state.focusY };
+      els.canvas.setPointerCapture(event.pointerId);
+      els.dropzone.classList.add('moving');
+    });
+    els.canvas.addEventListener('pointermove', (event) => {
+      if (!pointer || !state.crop) return;
+      const dx = event.clientX - pointer.x;
+      const dy = event.clientY - pointer.y;
+      const rect = els.canvas.getBoundingClientRect();
+      const overflowX = Math.max(0, sourceWidth(state.image) - state.crop.width);
+      const overflowY = Math.max(0, sourceHeight(state.image) - state.crop.height);
+      if (overflowX) state.focusX = clamp(pointer.focusX - dx / rect.width * state.crop.width / overflowX, 0, 1);
+      if (overflowY) state.focusY = clamp(pointer.focusY - dy / rect.height * state.crop.height / overflowY, 0, 1);
+      updateCropPosition();
+      renderPreview();
+    });
+    ['pointerup', 'pointercancel'].forEach(type => els.canvas.addEventListener(type, () => {
+      pointer = null;
+      els.dropzone.classList.remove('moving');
+    }));
+
+    function clamp(value, min, max) { return Math.max(min, Math.min(max, value)); }
+
+    function showError(message = '') { els.error.textContent = message; }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return `${bytes} B`;
+      if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KB`;
+      return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+    }
+
+    function gcd(a, b) {
+      while (b) [a, b] = [b, a % b];
+      return a;
+    }
+
+    function simplifiedRatio(w, h) {
+      const d = gcd(w, h);
+      return `${w / d}:${h / d}`;
+    }
+
+    function nearestRatio(width, height) {
+      const source = width / height;
+      return RATIOS.reduce((best, current) => {
+        const distance = Math.abs(Math.log(source / (current[0] / current[1])));
+        return distance < best.distance ? { ratio: current, distance } : best;
+      }, { ratio: RATIOS[0], distance: Infinity }).ratio;
+    }
+
+    function fitWithinMaxEdge(width, height, maxEdge = MAX_LONG_EDGE) {
+      const longEdge = Math.max(width, height);
+      if (longEdge <= maxEdge) return { width, height, scaled: false };
+      const scale = maxEdge / longEdge;
+      let nextWidth = Math.max(1, Math.round(width * scale));
+      let nextHeight = Math.max(1, Math.round(height * scale));
+      if (Math.max(nextWidth, nextHeight) > maxEdge) {
+        nextWidth = Math.max(1, Math.floor(width * scale));
+        nextHeight = Math.max(1, Math.floor(height * scale));
+      }
+      return { width: nextWidth, height: nextHeight, scaled: true };
+    }
+
+    function downscaleImage(image, width, height) {
+      let src = image;
+      let currentWidth = sourceWidth(image);
+      let currentHeight = sourceHeight(image);
+
+      while (currentWidth / 2 >= width && currentHeight / 2 >= height) {
+        currentWidth = Math.max(width, Math.round(currentWidth / 2));
+        currentHeight = Math.max(height, Math.round(currentHeight / 2));
+        const step = document.createElement('canvas');
+        step.width = currentWidth;
+        step.height = currentHeight;
+        const stepCtx = step.getContext('2d');
+        stepCtx.imageSmoothingEnabled = true;
+        stepCtx.imageSmoothingQuality = 'high';
+        stepCtx.drawImage(src, 0, 0, currentWidth, currentHeight);
+        src = step;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const outputCtx = canvas.getContext('2d');
+      outputCtx.imageSmoothingEnabled = true;
+      outputCtx.imageSmoothingQuality = 'high';
+      outputCtx.drawImage(src, 0, 0, width, height);
+      return canvas;
+    }
+
+    function applySourceInfo() {
+      const width = sourceWidth(state.image);
+      const height = sourceHeight(state.image);
+      els.sourceSize.textContent = `${width} × ${height}`;
+      els.sourceRatio.textContent = simplifiedRatio(width, height);
+      if (state.scaled) {
+        els.scaleNote.hidden = false;
+        els.scaleNote.textContent = `原图 ${state.originalWidth} × ${state.originalHeight}，已缩小到最长边 ${MAX_LONG_EDGE} 以内`;
+      } else {
+        els.scaleNote.hidden = true;
+        els.scaleNote.textContent = '';
+      }
+    }
+
+    async function loadFile(file) {
+      showError();
+      if (!file.type.startsWith('image/')) return showError('请选择图像文件。');
+      if (state.url) URL.revokeObjectURL(state.url);
+      state.url = URL.createObjectURL(file);
+      const image = new Image();
+      image.onload = () => {
+        try {
+          const originalWidth = image.naturalWidth;
+          const originalHeight = image.naturalHeight;
+          const fitted = fitWithinMaxEdge(originalWidth, originalHeight);
+          const working = fitted.scaled ? downscaleImage(image, fitted.width, fitted.height) : image;
+          state.file = file;
+          state.image = working;
+          state.originalWidth = originalWidth;
+          state.originalHeight = originalHeight;
+          state.scaled = fitted.scaled;
+          state.focusX = .5;
+          state.focusY = .5;
+          els.fileSize.textContent = formatBytes(file.size);
+          els.fileType.textContent = (file.type.split('/')[1] || '未知').toUpperCase();
+          els.dropzone.classList.add('has-image');
+          els.replace.disabled = false;
+          els.download.disabled = false;
+          applySourceInfo();
+          const ratio = nearestRatio(sourceWidth(working), sourceHeight(working));
+          chooseRatio(ratio[0], ratio[1], true);
+        } catch (error) {
+          showError('无法处理这张超大图片，请先缩小后再试。');
+        }
+      };
+      image.onerror = () => showError('无法读取这张图片。HEIC 等格式可能需要先转换为 JPG、PNG 或 WebP。');
+      image.src = state.url;
+    }
+
+    function chooseRatio(w, h, automatic) {
+      state.ratio = [w, h];
+      document.querySelectorAll('.ratio').forEach(button => {
+        button.classList.toggle('active', Number(button.dataset.w) === w && Number(button.dataset.h) === h);
+      });
+      els.autoBadge.classList.toggle('show', automatic);
+      if (!automatic) setTimeout(() => els.autoBadge.classList.remove('show'), 0);
+      if (!state.image) return;
+
+      const iw = sourceWidth(state.image);
+      const ih = sourceHeight(state.image);
+      const divisor = gcd(w, h);
+      const unitW = w / divisor;
+      const unitH = h / divisor;
+      const scale = Math.min(Math.floor(iw / unitW), Math.floor(ih / unitH));
+      if (scale < 1) {
+        state.crop = null;
+        els.cropSize.textContent = '尺寸不足';
+        els.retention.textContent = '无法按整数比例裁剪';
+        els.download.disabled = true;
+        return;
+      }
+      state.crop = { x: 0, y: 0, width: unitW * scale, height: unitH * scale };
+      updateCropPosition();
+      els.cropSize.textContent = `${state.crop.width} × ${state.crop.height}`;
+      const kept = state.crop.width * state.crop.height / (iw * ih) * 100;
+      els.retention.textContent = kept > 99.995 ? '无需裁剪 · 100%' : `保留 ${kept.toFixed(1)}%`;
+      els.download.disabled = false;
+      renderPreview();
+    }
+
+    function updateCropPosition() {
+      if (!state.crop || !state.image) return;
+      state.crop.x = Math.round((sourceWidth(state.image) - state.crop.width) * state.focusX);
+      state.crop.y = Math.round((sourceHeight(state.image) - state.crop.height) * state.focusY);
+    }
+
+    function renderPreview() {
+      if (!state.image || !state.crop) return;
+      const maxW = els.dropzone.clientWidth - 32;
+      const maxH = els.dropzone.clientHeight - 32;
+      const scale = Math.min(maxW / state.crop.width, maxH / state.crop.height, 1);
+      const cssW = Math.max(1, Math.round(state.crop.width * scale));
+      const cssH = Math.max(1, Math.round(state.crop.height * scale));
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      els.canvas.width = Math.round(cssW * dpr);
+      els.canvas.height = Math.round(cssH * dpr);
+      els.canvas.style.width = `${cssW}px`;
+      els.canvas.style.height = `${cssH}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.clearRect(0, 0, cssW, cssH);
+      ctx.drawImage(state.image, state.crop.x, state.crop.y, state.crop.width, state.crop.height, 0, 0, cssW, cssH);
+    }
+
+    function outputType() {
+      if (els.format.value !== 'original') return els.format.value;
+      return ['image/png', 'image/jpeg', 'image/webp'].includes(state.file.type) ? state.file.type : 'image/png';
+    }
+
+    function extensionFor(type) {
+      return ({ 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' })[type] || 'png';
+    }
+
+    function downloadCrop() {
+      if (!state.image || !state.crop) return;
+      showError();
+      const output = document.createElement('canvas');
+      output.width = state.crop.width;
+      output.height = state.crop.height;
+      const outputContext = output.getContext('2d');
+      outputContext.imageSmoothingEnabled = false;
+      outputContext.drawImage(
+        state.image,
+        state.crop.x, state.crop.y, state.crop.width, state.crop.height,
+        0, 0, state.crop.width, state.crop.height
+      );
+      const type = outputType();
+      output.toBlob((blob) => {
+        if (!blob) return showError('导出失败，请尝试改用 PNG 格式。');
+        const base = state.file.name.replace(/\.[^.]+$/, '');
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${base}_${state.ratio[0]}x${state.ratio[1]}_${state.crop.width}x${state.crop.height}.${extensionFor(type)}`;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+      }, type, .95);
+    }
+  </script>
+</body>
+</html>

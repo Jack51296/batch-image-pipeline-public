@@ -1,0 +1,64 @@
+name: Image tools — test and deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'local_tools/image_tools/**'
+      - '.github/workflows/image-tools.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'local_tools/image_tools/**'
+      - '.github/workflows/image-tools.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: image-tools-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-package:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: local_tools/image_tools
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: local_tools/image_tools/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm test
+      - name: Package only the image tool pages
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p _site/ratio_crop _site/size_matcher
+          cp index.html _site/index.html
+          cp ratio_crop/index.html _site/ratio_crop/index.html
+          cp size_matcher/index.html _site/size_matcher/index.html
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        with:
+          path: local_tools/image_tools/_site
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: test-and-package
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy image tools
+        id: deployment
+        uses: actions/deploy-pages@v4

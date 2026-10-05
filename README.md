@@ -7,6 +7,18 @@
 （脚本按自身位置找 `batches/index.json`、`prompts.json`、`skills/`）。`local_tools/` 是本机 Windows 侧的
 配套工具，`docs/`、`examples/`、`runbooks/` 是文档和实跑记录，放在开发机上无副作用。
 
+### 图像工具入口
+
+新增整合的两款工具：[在线工具首页](https://jack51296.github.io/batch-image-pipeline-public/) · [使用说明与迁移记录](local_tools/image_tools/README.md)。
+本地使用可直接双击 `local_tools/image_tools/index.html`，无需安装依赖，图片在浏览器内处理。
+
+| 工具 | 在工作流中的作用 | 说明 |
+|---|---|---|
+| 图像比例裁剪 | 入库前准备横屏 / 竖屏 / 方形素材 | 13 种比例、拖动定位、最大整数像素裁剪；最长边超过 3000 时先等比缩小 |
+| 尺寸与文件大小匹配 | 交付前按参照图调整规格 | 同时匹配目标宽高与文件字节数；比例不同时会拉伸，目标过小时显示误差 |
+
+工具按单张图片操作，下载后手动纳入批次；尺寸匹配不替代几何配准。对已对齐的 input / output 对调整尺寸时，应让两张图使用相同目标宽高。
+
 ---
 
 ## 1. 全局流程
@@ -72,6 +84,7 @@ batch-image-pipeline/                    ← == 开发机 /mnt/kfs/alice/pipelin
 │   ├── ab_quality_high_vs_low/          ← quality low/high 单图 A/B（建 1 行测试批 + 指标 + 拼图）
 │   └── pixel_rule_regress/              ← 像素放大规则的补丁脚本、单测、开发机回归脚本
 ├── local_tools/                         ← 本机 Windows 侧
+│   ├── image_tools/                     ← 浏览器图像工具：统一入口、比例裁剪、尺寸/文件大小匹配（无需依赖）
 │   ├── kml/                             ← 驱动调试 Chrome 里的 code-server：跑命令、上传、下载、截图
 │   ├── blob/                            ← BlobStore 上传/下载 + blob-upload-dashboard skill
 │   ├── dedup/                           ← 跨批次查重、生成跳过清单（+ data/4档重复清单.csv）
@@ -279,6 +292,8 @@ python deliver_to_share.py %TEMP%\manifest_work.txt  /mnt/kfs/alice/work/<id>   
 ---
 
 ## 6. 本机工具速查（`local_tools/kml/`，需 §3.2 的调试 Chrome）
+
+浏览器图像工具另见 [`local_tools/image_tools/`](local_tools/image_tools/README.md)：可双击 HTML 或在线使用，不需要本节的调试 Chrome 配置。
 
 | 需求 | 命令 |
 |---|---|

@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>图像文件大小匹配</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0c0e13;
+      --panel: rgba(24, 27, 34, .86);
+      --panel-2: rgba(255,255,255,.045);
+      --line: rgba(255,255,255,.10);
+      --text: #f4f5f7;
+      --muted: #969ca9;
+      --accent: #7c8cff;
+      --accent-2: #aab3ff;
+      --ok: #69d6a8;
+      --warn: #ffbd72;
+      --danger: #ff8695;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: radial-gradient(circle at 8% 5%, rgba(103,91,255,.20), transparent 32rem),
+                  radial-gradient(circle at 90% 90%, rgba(41,192,168,.10), transparent 30rem), var(--bg);
+    }
+    button, select, input { font: inherit; }
+    button { cursor: pointer; }
+    .app { width: min(1380px, 100%); margin: 0 auto; padding: 30px; }
+    .tool-nav { display: flex; gap: 20px; margin-bottom: 22px; font-size: 13px; }
+    .tool-nav a { color: var(--accent-2); text-decoration: none; }
+    .tool-nav a:hover { text-decoration: underline; }
+    header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 44px); line-height: 1; letter-spacing: -.045em; }
+    .subtitle { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
+    .local { padding: 8px 12px; border: 1px solid rgba(124,140,255,.28); border-radius: 999px; color: #c7ccff; background: rgba(124,140,255,.10); font-size: 12px; white-space: nowrap; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 390px; gap: 18px; align-items: start; }
+    .card { border: 1px solid var(--line); border-radius: 22px; background: var(--panel); box-shadow: 0 24px 70px rgba(0,0,0,.28); backdrop-filter: blur(16px); }
+    .previews { padding: 18px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .preview { min-width: 0; }
+    .preview-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 0 2px 9px; }
+    .preview-head h2 { margin: 0; font-size: 14px; }
+    .preview-head span { color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dropzone { position: relative; min-height: 510px; display: grid; place-items: center; padding: 20px; overflow: hidden; border: 1px dashed rgba(255,255,255,.18); border-radius: 16px; background-color: #11141a; background-image: linear-gradient(45deg,#171a21 25%,transparent 25%),linear-gradient(-45deg,#171a21 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#171a21 75%),linear-gradient(-45deg,transparent 75%,#171a21 75%); background-size: 24px 24px; background-position: 0 0,0 12px,12px -12px,-12px 0; transition: border-color .2s, background-color .2s; }
+    .dropzone.dragging { border-color: var(--accent-2); background-color: #191c29; }
+    .dropzone.has-image { border-style: solid; border-color: rgba(255,255,255,.08); }
+    .dropzone img { display: none; max-width: 100%; max-height: 465px; width: auto; height: auto; object-fit: contain; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+    .dropzone.has-image img { display: block; }
+    .empty { max-width: 260px; text-align: center; }
+    .empty .icon { width: 54px; height: 54px; display: grid; place-items: center; margin: 0 auto 14px; border-radius: 17px; color: white; background: linear-gradient(145deg,#8290ff,#5e68d7); box-shadow: 0 14px 34px rgba(94,104,215,.35); font-size: 25px; }
+    .empty h3 { margin: 0 0 8px; font-size: 18px; }
+    .empty p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
+    .browse { margin-top: 18px; padding: 10px 15px; border: 0; border-radius: 10px; color: white; background: #2b2f39; }
+    .dropzone.has-image .empty { display: none; }
+    .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+    .meta div { min-width: 0; padding: 9px 10px; border: 1px solid rgba(255,255,255,.06); border-radius: 11px; background: var(--panel-2); }
+    .meta small { display: block; margin-bottom: 4px; color: var(--muted); font-size: 10px; }
+    .meta strong { display: block; overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    aside { padding: 20px; }
+    .section + .section { margin-top: 21px; padding-top: 21px; border-top: 1px solid var(--line); }
+    .section-title { margin-bottom: 12px; }
+    .section-title h2 { margin: 0; font-size: 14px; }
+    label { display: block; color: var(--muted); font-size: 12px; }
+    select, input[type="number"] { width: 100%; margin-top: 7px; padding: 10px 11px; border: 1px solid var(--line); border-radius: 10px; color: var(--text); background: #252932; outline: none; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    .target-box { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: end; }
+    .unit { padding-bottom: 11px; color: var(--muted); font-size: 12px; }
+    .hint { margin: 9px 0 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+    .result { display: grid; gap: 9px; padding: 13px; border: 1px solid rgba(105,214,168,.18); border-radius: 13px; background: rgba(105,214,168,.07); }
+    .result-row { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; }
+    .result-row span { color: var(--muted); }
+    .result-row strong { font-variant-numeric: tabular-nums; }
+    .status { min-height: 18px; margin: 11px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .status.ok { color: var(--ok); }
+    .status.warn { color: var(--warn); }
+    .status.error { color: var(--danger); }
+    .progress { height: 5px; overflow: hidden; margin-top: 12px; border-radius: 999px; background: rgba(255,255,255,.08); }
+    .progress i { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg,var(--accent),#69d6a8); transition: width .2s; }
+    .actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 9px; margin-top: 21px; }
+    .action { min-height: 45px; border: 0; border-radius: 12px; color: white; transition: transform .15s, opacity .15s; }
+    .action:hover:not(:disabled) { transform: translateY(-1px); }
+    .action:disabled { cursor: not-allowed; opacity: .35; }
+    .secondary { background: #2a2e37; }
+    .primary { background: linear-gradient(135deg,#8390ff,#606bdc); box-shadow: 0 12px 28px rgba(96,107,220,.28); }
+    #sourceInput, #targetInput { display: none; }
+    .footnote { margin: 18px 2px 0; color: var(--muted); font-size: 11px; line-height: 1.65; }
+    @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+    @media (max-width: 700px) { .app { padding: 18px; } header { align-items: start; } .local { display: none; } .previews { grid-template-columns: 1fr; } .dropzone { min-height: 360px; } .dropzone img { max-height: 315px; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <nav class="tool-nav" aria-label="图像工具导航"><a href="../index.html">工具首页</a><a href="../ratio_crop/index.html">比例裁剪</a></nav>
+    <header>
+      <div><h1>尺寸与文件大小匹配</h1><p class="subtitle">以目标图的宽高和文件大小为参照，调整原图尺寸与编码质量。两图比例不同时会拉伸原图。</p></div>
+      <div class="local">100% 本地处理 · 不上传图片</div>
+    </header>
+    <div class="layout">
+      <section class="card previews">
+        <div class="preview">
+          <div class="preview-head"><h2>原图</h2><span id="sourceName">等待上传</span></div>
+          <div class="dropzone" id="sourceDrop"><div class="empty"><div class="icon">↥</div><h3>上传原图</h3><p>拖入或选择需要调整大小的图片</p><button class="browse" data-pick="source">选择原图</button></div><img id="sourcePreview" alt="原图预览"></div>
+          <div class="meta"><div><small>尺寸</small><strong id="sourceDim">—</strong></div><div><small>文件大小</small><strong id="sourceBytes">—</strong></div><div><small>比例</small><strong id="sourceRatio">—</strong></div></div>
+        </div>
+        <div class="preview">
+          <div class="preview-head"><h2>目标图</h2><span id="targetName">等待上传</span></div>
+          <div class="dropzone" id="targetDrop"><div class="empty"><div class="icon">◎</div><h3>上传目标图</h3><p>读取宽高、格式和文件大小，不使用目标图内容改写原图</p><button class="browse" data-pick="target">选择目标图</button></div><img id="targetPreview" alt="目标图预览"></div>
+          <div class="meta"><div><small>尺寸</small><strong id="targetDim">—</strong></div><div><small>文件大小</small><strong id="targetBytes">—</strong></div><div><small>比例</small><strong id="targetRatio">—</strong></div></div>
+        </div>
+      </section>
+      <aside class="card">
+        <section class="section">
+          <div class="section-title"><h2>匹配设置</h2></div>
+          <div class="target-box"><label>目标文件大小<input id="targetSize" type="number" min="1" step="1" placeholder="上传目标图后自动填入"></label><div class="unit">字节</div></div>
+          <p class="hint">默认使用目标图的实际文件大小。输出会同时对齐目标图的像素尺寸和文件大小，不限制原图与目标图的宽高比。1 MB = 1,048,576 字节。</p>
+        </section>
+        <section class="section">
+          <label>输出格式<select id="format"><option value="auto">自动选择（推荐）</option><option value="image/jpeg">JPEG</option><option value="image/webp">WebP</option><option value="image/png">PNG</option></select></label>
+          <p class="hint">自动模式优先使用目标图格式；当同尺寸 PNG 超过目标大小时，改用 WebP。目标过小时可能无法精确匹配，结果会显示误差。</p>
+        </section>
+        <section class="section">
+          <div class="section-title"><h2>输出预估</h2></div>
+          <div class="result"><div class="result-row"><span>输出尺寸</span><strong id="outDim">—</strong></div><div class="result-row"><span>预计大小</span><strong id="outBytes">—</strong></div><div class="result-row"><span>与目标差值</span><strong id="outDiff">—</strong></div><div class="result-row"><span>缩放比例</span><strong id="outScale">—</strong></div></div>
+          <div class="progress"><i id="progressBar"></i></div><p class="status" id="status">请先上传两张图片。</p>
+        </section>
+        <div class="actions"><button class="action secondary" id="reset" disabled>重新选择</button><button class="action primary" id="process" disabled>匹配并下载</button></div>
+        <p class="footnote">输出图会强制缩放到目标图的宽高，同时匹配目标文件大小，不裁剪、不增加画面内容。原图与目标图比例不同时，画面会随目标尺寸产生横向或纵向缩放。</p>
+        <p class="footnote">文件不足目标大小时会追加尾部填充字节，像素内容不变；部分严格校验器可能不接受这类文件。透明原图导出 JPEG 会使用白色背景。</p>
+      </aside>
+    </div>
+    <input id="sourceInput" type="file" accept="image/*"><input id="targetInput" type="file" accept="image/*">
+  </main>
+  <script>
+    const $ = id => document.getElementById(id);
+    const state = { source: null, target: null, output: null, busy: false };
+    const els = { sourceDrop: $('sourceDrop'), targetDrop: $('targetDrop'), sourceInput: $('sourceInput'), targetInput: $('targetInput'), sourcePreview: $('sourcePreview'), targetPreview: $('targetPreview'), sourceName: $('sourceName'), targetName: $('targetName'), sourceDim: $('sourceDim'), targetDim: $('targetDim'), sourceBytes: $('sourceBytes'), targetBytes: $('targetBytes'), sourceRatio: $('sourceRatio'), targetRatio: $('targetRatio'), targetSize: $('targetSize'), format: $('format'), outDim: $('outDim'), outBytes: $('outBytes'), outDiff: $('outDiff'), outScale: $('outScale'), progress: $('progressBar'), status: $('status'), process: $('process'), reset: $('reset') };
+    const fmtBytes = n => { if (!Number.isFinite(n)) return '—'; if (n < 1024) return `${n} B`; if (n < 1024 ** 2) return `${(n / 1024).toFixed(1)} KB`; return `${(n / 1024 ** 2).toFixed(2)} MB`; };
+    const ratioText = (w, h) => { const g = (a,b) => b ? g(b, a % b) : a; const d = g(w,h); return `${Math.round(w/d)}:${Math.round(h/d)}`; };
+    const setStatus = (text, type = '') => { els.status.textContent = text; els.status.className = `status ${type}`; };
+    function loadImage(file) { return new Promise((resolve, reject) => { const url = URL.createObjectURL(file); const img = new Image(); img.onload = () => { URL.revokeObjectURL(url); resolve(img); }; img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('无法读取图片')); }; img.src = url; }); }
+    function bindPicker(kind) { const input = els[`${kind}Input`]; input.onchange = () => input.files[0] && acceptFile(kind, input.files[0]); }
+    async function acceptFile(kind, file) { if (!file.type.startsWith('image/')) { setStatus('请选择浏览器支持的图片文件。', 'error'); return; } try { const image = await loadImage(file); state[kind] = { file, image }; state.output = null; const preview = els[`${kind}Preview`]; preview.src = URL.createObjectURL(file); els[`${kind}Drop`].classList.add('has-image'); els[`${kind}Name`].textContent = file.name; els[`${kind}Dim`].textContent = `${image.naturalWidth || image.width} × ${image.naturalHeight || image.height}`; els[`${kind}Bytes`].textContent = fmtBytes(file.size); els[`${kind}Ratio`].textContent = ratioText(image.naturalWidth || image.width, image.naturalHeight || image.height); if (kind === 'target') els.targetSize.value = file.size; updateReady(); } catch (e) { setStatus(e.message, 'error'); } }
+    function validTargetSize() { const bytes = Number(els.targetSize.value); return Number.isSafeInteger(bytes) && bytes > 0; }
+    function updateReady() { const hasBoth = !!(state.source && state.target), ready = !!(hasBoth && validTargetSize()); els.process.disabled = !ready || state.busy; els.reset.disabled = !(state.source || state.target) || state.busy; if (hasBoth && !state.busy && !validTargetSize()) setStatus('目标文件大小必须是有效的正整数字节数。', 'error'); else if (ready && !state.busy && !state.output) setStatus('已准备好，输出将同时对齐目标尺寸和文件大小。'); }
+    function setupDrop(kind) { const zone = els[`${kind}Drop`]; ['dragenter','dragover'].forEach(type => zone.addEventListener(type, e => { e.preventDefault(); zone.classList.add('dragging'); })); ['dragleave','drop'].forEach(type => zone.addEventListener(type, e => { e.preventDefault(); zone.classList.remove('dragging'); })); zone.addEventListener('drop', e => { const file = e.dataTransfer.files[0]; if (file) acceptFile(kind, file); }); }
+    const nextFrame = () => new Promise(resolve => requestAnimationFrame(resolve));
+    async function canvasBlob(image, w, h, mime, quality, canvas) { canvas.width = w; canvas.height = h; const ctx = canvas.getContext('2d', { alpha: mime !== 'image/jpeg' }); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; if (mime === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h); } ctx.drawImage(image, 0, 0, w, h); const blob = await new Promise(resolve => canvas.toBlob(resolve, mime, quality)); await nextFrame(); return blob; }
+    async function makeWorkingImage(file, image, sw, sh, estimatedScale) {
+      const workScale = Math.min(1, Math.max(estimatedScale * 2.5, .08));
+      if (workScale >= .85 || typeof createImageBitmap !== 'function') return { image, scale: 1, close() {} };
+      const w = Math.max(1, Math.round(sw * workScale)), h = Math.max(1, Math.round(sh * workScale));
+      try {
+        const bitmap = await createImageBitmap(file, { resizeWidth: w, resizeHeight: h, resizeQuality: 'high' });
+        return { image: bitmap, scale: bitmap.width / sw, close() { bitmap.close(); } };
+      } catch (_) {
+        const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d'); ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high'; ctx.drawImage(image, 0, 0, w, h);
+        return { image: canvas, scale: w / sw, close() { canvas.width = canvas.height = 1; } };
+      }
+    }
+    async function padBlobExact(blob, target) {
+      if (blob.size >= target) return blob;
+      // 追加尾部字节不会改变已编码图像的像素内容，浏览器解码器会忽略文件结束标记后的数据。
+      // 统一处理 JPEG、WebP、PNG，避免大目标文件因格式不同而无法补齐。
+      return new Blob([blob, new Uint8Array(target - blob.size)], { type: blob.type });
+    }
+    async function findMatch() {
+      if (!validTargetSize()) throw new Error('目标文件大小必须是有效的正整数字节数。');
+      const source = state.source, targetBytes = Math.max(1, Math.floor(Number(els.targetSize.value)));
+      const autoFormat = els.format.value === 'auto';
+      let mime = els.format.value;
+      if (autoFormat) mime = ['image/jpeg','image/webp','image/png'].includes(state.target.file.type) ? state.target.file.type : 'image/webp';
+      const sw = source.image.naturalWidth || source.image.width, sh = source.image.naturalHeight || source.image.height;
+      const tw = state.target.image.naturalWidth || state.target.image.width, th = state.target.image.naturalHeight || state.target.image.height;
+      const canvas = document.createElement('canvas');
+      let best = null, bestUnder = null, tested = 0;
+      const remember = candidate => {
+        if (!best || Math.abs(candidate.blob.size - targetBytes) < Math.abs(best.blob.size - targetBytes)) best = candidate;
+        if (candidate.blob.size <= targetBytes && (!bestUnder || candidate.blob.size > bestUnder.blob.size)) bestUnder = candidate;
+      };
+      const encode = async (quality, progress) => {
+        const blob = await canvasBlob(source.image, tw, th, mime, quality, canvas);
+        if (!blob) throw new Error('当前浏览器不支持所选输出格式');
+        tested++; els.progress.style.width = `${progress}%`;
+        const candidate = { blob, w: tw, h: th, scale: tw / sw, quality }; remember(candidate); return candidate;
+      };
+      const baseQuality = mime === 'image/png' ? undefined : .88;
+      let dimensionCandidate = await encode(baseQuality, 25);
+      if (autoFormat && mime === 'image/png' && dimensionCandidate.blob.size > targetBytes) {
+        mime = 'image/webp'; best = null; bestUnder = null;
+        dimensionCandidate = await encode(.88, 35);
+      }
+      if (mime !== 'image/png') {
+        let qLow = .01, qHigh = .98;
+        for (let i = 0; i < 7; i++) {
+          const q = (qLow + qHigh) / 2;
+          const candidate = await encode(q, 25 + i * 8);
+          if (candidate.blob.size > targetBytes) qHigh = q; else qLow = q;
+          if (Math.abs(candidate.blob.size - targetBytes) / targetBytes < .005) break;
+        }
+      }
+      let result = bestUnder || best;
+      if (!result) throw new Error('无法生成输出图片');
+      if (result.blob.size < targetBytes) result.blob = await padBlobExact(result.blob, targetBytes);
+      els.progress.style.width = '100%';
+      return {...result, mime, tested};
+    }
+    async function process() { if (!(state.source && state.target)) { updateReady(); return; } state.busy = true; updateReady(); els.progress.style.width = '4%'; setStatus('正在对齐目标尺寸和文件大小，请稍候…'); const started = performance.now(); try { const result = await findMatch(); state.output = result; const diff = result.blob.size - Number(els.targetSize.value), seconds = (performance.now() - started) / 1000; els.outDim.textContent = `${result.w} × ${result.h}`; els.outBytes.textContent = fmtBytes(result.blob.size); els.outDiff.textContent = diff === 0 ? '0 B' : `${diff > 0 ? '+' : '-'}${fmtBytes(Math.abs(diff))}`; els.outScale.textContent = `${(result.scale * 100).toFixed(1)}%（目标尺寸）`; setStatus(diff === 0 ? `尺寸与文件大小均已精确匹配，用时 ${seconds.toFixed(1)} 秒。` : `尺寸已匹配，文件大小误差 ${fmtBytes(Math.abs(diff))}，用时 ${seconds.toFixed(1)} 秒。`, diff === 0 ? 'ok' : 'warn'); const ext = result.mime === 'image/png' ? 'png' : result.mime === 'image/webp' ? 'webp' : 'jpg'; const base = (state.source.file.name.replace(/\.[^.]+$/, '') || 'image') + `-matched.${ext}`; const a = document.createElement('a'); a.href = URL.createObjectURL(result.blob); a.download = base; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); } catch (e) { setStatus(e.message || '处理失败，请更换图片重试。', 'error'); els.progress.style.width = '0'; } finally { state.busy = false; updateReady(); } }
+    function reset() { state.source = null; state.target = null; state.output = null; els.sourceDrop.classList.remove('has-image'); els.targetDrop.classList.remove('has-image'); els.sourcePreview.removeAttribute('src'); els.targetPreview.removeAttribute('src'); ['sourceName','targetName'].forEach(id => els[id].textContent='等待上传'); ['sourceDim','targetDim','sourceBytes','targetBytes','sourceRatio','targetRatio','outDim','outBytes','outDiff','outScale'].forEach(id => els[id].textContent='—'); els.targetSize.value=''; els.progress.style.width='0'; setStatus('请先上传两张图片。'); updateReady(); }
+    document.querySelectorAll('[data-pick]').forEach(btn => btn.addEventListener('click', () => els[`${btn.dataset.pick}Input`].click()));
+    bindPicker('source'); bindPicker('target'); setupDrop('source'); setupDrop('target'); els.process.addEventListener('click', process); els.reset.addEventListener('click', reset); els.targetSize.addEventListener('input', () => { state.output = null; updateReady(); }); els.format.addEventListener('change', () => { state.output = null; if (state.source && state.target) setStatus('输出格式已更新，点击“匹配并下载”重新生成。'); });
+  </script>
+</body>
+</html>

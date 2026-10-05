@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>图像工具 · Batch Image Pipeline</title>
+  <style>
+    :root { color-scheme: dark; --bg: #0d0f15; --text: #f0f2f7; --muted: #a1a9bc; --line: #ffffff16; --accent: #b6b0ff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; color: var(--text); background: radial-gradient(ellipse at 20% 0, #7664ff1c, transparent 60%), var(--bg); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif; }
+    main { max-width: 1080px; margin: auto; padding: 64px 28px 32px; }
+    .eyebrow { color: var(--accent); font-size: 12px; letter-spacing: .13em; }
+    h1 { margin: 18px 0; font-size: clamp(32px, 5vw, 52px); letter-spacing: -.04em; }
+    .intro { max-width: 660px; color: var(--muted); font-size: 16px; line-height: 1.9; }
+    .tag { display: inline-block; color: #84d9b1; border: 1px solid #84d9b133; border-radius: 99px; padding: 7px 12px; font-size: 12px; margin: 12px 0 32px; }
+    .tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+    article { padding: 30px; border: 1px solid var(--line); border-radius: 20px; background: #191d29bb; display: flex; flex-direction: column; }
+    .number { font-size: 12px; color: var(--accent); font-variant-numeric: tabular-nums; }
+    h2 { font-size: 23px; margin: 18px 0 12px; }
+    article p { color: var(--muted); font-size: 14px; line-height: 1.8; margin: 0 0 16px; }
+    ul { padding-left: 18px; color: #c1c8d8; font-size: 13px; line-height: 2; margin: 0 0 26px; }
+    .launch { margin-top: auto; display: block; padding: 13px 16px; border-radius: 10px; background: #8273ec24; border: 1px solid #a89aff40; color: #dedaff; text-decoration: none; font-size: 14px; }
+    .launch:hover { background: #8273ec40; }
+    a:focus-visible { outline: 2px solid var(--accent); outline-offset: 5px; }
+    .workflow { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 24px; }
+    h3 { margin: 0 0 12px; font-size: 14px; }
+    .workflow p, footer { color: var(--muted); font-size: 12px; line-height: 1.9; }
+    footer { margin-top: 36px; display: flex; gap: 24px; flex-wrap: wrap; }
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+    @media (max-width: 700px) { main { padding: 34px 18px; } .tools { grid-template-columns: 1fr; } article { padding: 24px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">BATCH IMAGE PIPELINE / LOCAL TOOLS</div>
+    <h1>图像规格，统一处理。</h1>
+    <p class="intro">在批量出图工作流中完成素材比例准备与交付规格匹配。选择工具，导入图片，直接下载结果。</p>
+    <div class="tag">本地处理 · 无需登录 · 图片不上传</div>
+    <section class="tools" aria-label="图像工具">
+      <article>
+        <span class="number">01 / PREPARE</span>
+        <h2>图像比例裁剪</h2>
+        <p>将素材裁成标准比例，拖动画面调整位置，保留满足比例的最大整数像素区域。</p>
+        <ul><li>13 种横屏、竖屏与方形比例</li><li>最长边超过 3000 像素时先等比缩小</li><li>导出 PNG、JPEG、WebP</li></ul>
+        <a class="launch" href="./ratio_crop/index.html" aria-label="比例裁剪">打开比例裁剪 →</a>
+      </article>
+      <article>
+        <span class="number">02 / DELIVER</span>
+        <h2>尺寸与文件大小匹配</h2>
+        <p>上传原图和参照图，将输出缩放到参照图宽高，并通过编码质量与填充字节匹配文件大小。</p>
+        <ul><li>同时匹配像素尺寸与文件字节数</li><li>自动选格式，可手动设置大小与格式</li><li>两图比例不同时会拉伸；过小目标会提示误差</li></ul>
+        <a class="launch" href="./size_matcher/index.html" aria-label="尺寸与文件大小匹配">打开尺寸匹配 →</a>
+      </article>
+    </section>
+    <section class="workflow">
+      <h3>接入现有工作流</h3>
+      <p>比例准备 → JSONL 任务清单 → API 出图 / 追色 → 交付表 → 几何对齐 → 按需检查尺寸与文件大小 → 交付</p>
+      <p>下载结果后手动纳入批次目录。调整已对齐的图像对时应同时处理 input / output，保持配对尺寸一致。</p>
+    </section>
+    <footer>
+      <span>无需安装依赖 · 双击此页面也可离线使用</span>
+      <a href="https://github.com/Jack51296/batch-image-pipeline-public/tree/main/local_tools/image_tools">使用说明与代码 ↗</a>
+    </footer>
+  </main>
+</body>
+</html>
