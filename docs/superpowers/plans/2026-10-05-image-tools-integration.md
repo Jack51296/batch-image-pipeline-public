@@ -22,7 +22,15 @@
 - [x] 创建 `index.html`、`README.md`、`MIGRATION.md`；更新根 README 与 local_tools README。
 - [x] 使用浏览器实际上传、裁剪和下载；检查 13 比例、无缩放裁剪像素、超大图、拖动、三种格式、目标尺寸及字节数、无法达到的目标与错误提示。
 - [x] 添加 Node 测试配置和 GitHub Actions 测试/Pages 工作流；部署包只复制三个 HTML。
-- [ ] 审查差异、重跑测试；提交并推送 main，配置 Pages，确认远端代码、Actions 和在线页面。
+- [x] 审查差异、重跑测试；提交并推送 main，配置 Pages，确认远端代码、Actions 和在线页面。
+
+## 交付验证
+
+- 实现提交：`ce0cc6f8f86de81b74f3a3514233f35c6c337e2c`。
+- 本机 Chrome：8 项浏览器回归测试通过，0 失败。
+- GitHub Linux / Chromium：测试与 Pages 部署均成功，运行 [37298426295](https://github.com/Jack51296/batch-image-pipeline-public/actions/runs/37298426295)。
+- 三个线上 HTML 均返回 HTTP 200，内容哈希与实现提交中的 Git blob 一致。
+- 统一入口：[https://jack51296.github.io/batch-image-pipeline-public/](https://jack51296.github.io/batch-image-pipeline-public/)。
 
 ## 验证命令
 
